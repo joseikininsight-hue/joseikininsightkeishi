@@ -1012,6 +1012,13 @@ add_action('gip_update_vector', function($id) {
 // =============================================================================
 
 function gip_rest_routes() {
+    // ヘルスチェック用エンドポイント（デバッグ・疎通確認用）
+    register_rest_route(GIP_API_NS, '/health', array(
+        'methods' => 'GET',
+        'callback' => 'gip_api_health',
+        'permission_callback' => '__return_true',
+    ));
+    
     register_rest_route(GIP_API_NS, '/chat', array(
         'methods' => 'POST',
         'callback' => 'gip_api_chat',
@@ -1034,6 +1041,27 @@ function gip_rest_routes() {
         'methods' => 'GET',
         'callback' => 'gip_api_grant_detail',
         'permission_callback' => '__return_true',
+    ));
+    
+    gip_log('REST API routes registered: ' . GIP_API_NS);
+}
+
+/**
+ * ヘルスチェックAPI - 疎通確認用
+ */
+function gip_api_health($request) {
+    return new WP_REST_Response(array(
+        'success' => true,
+        'status' => 'ok',
+        'version' => GIP_VERSION,
+        'namespace' => GIP_API_NS,
+        'timestamp' => current_time('mysql'),
+        'endpoints' => array(
+            'chat' => rest_url(GIP_API_NS . '/chat'),
+            'feedback' => rest_url(GIP_API_NS . '/feedback'),
+            'municipalities' => rest_url(GIP_API_NS . '/municipalities'),
+            'grant' => rest_url(GIP_API_NS . '/grant/{id}'),
+        ),
     ));
 }
 
@@ -2521,8 +2549,13 @@ function gip_frontend_assets() {
             $should_load = true;
         }
         $template = get_page_template_slug($post->ID);
-        if (strpos($template, 'ai-diagnosis') !== false || strpos($template, 'gip') !== false) {
-            $should_load = true;
+        // 複数のテンプレートパターンをサポート
+        $template_patterns = array('ai-diagnosis', 'gip', 'subsidy-diagnosis', 'diagnosis');
+        foreach ($template_patterns as $pattern) {
+            if (strpos($template, $pattern) !== false) {
+                $should_load = true;
+                break;
+            }
         }
     }
     
@@ -4178,6 +4211,9 @@ function gip_frontend_js() {
                 },
                 error: function(xhr, status, error) {
                     console.error('GIP Chat: Error', status, error);
+                    console.error('GIP Chat: XHR Status', xhr.status);
+                    console.error('GIP Chat: Response Text', xhr.responseText);
+                    console.error('GIP Chat: API URL was', GIP_CHAT.api + '/chat');
                     self.hideTyping();
                     
                     var errorMsg = '通信エラーが発生しました。';
@@ -4185,9 +4221,25 @@ function gip_frontend_js() {
                         errorMsg = 'リクエストがタイムアウトしました。もう一度お試しください。';
                     } else if (xhr.status === 0) {
                         errorMsg = 'ネットワーク接続を確認してください。';
+                    } else if (xhr.status === 400) {
+                        errorMsg = 'リクエストエラーです。ページを更新してください。';
+                    } else if (xhr.status === 404) {
+                        errorMsg = 'APIエンドポイントが見つかりません。パーマリンク設定を確認してください。';
+                        console.error('GIP Chat: 404 - REST API endpoint not found. Check permalink settings.');
                     } else if (xhr.status >= 500) {
                         errorMsg = 'サーバーエラーが発生しました。しばらく待ってからお試しください。';
                     }
+                    
+                    // レスポンスJSONがある場合は解析
+                    try {
+                        var respJson = JSON.parse(xhr.responseText);
+                        if (respJson.message) {
+                            console.error('GIP Chat: Server message:', respJson.message);
+                            if (respJson.code === 'rest_no_route') {
+                                errorMsg = 'APIルートが見つかりません。管理画面で「設定」→「パーマリンク」を開き、保存ボタンを押してください。';
+                            }
+                        }
+                    } catch(e) {}
                     
                     self.addMessage('bot', errorMsg);
                 },
