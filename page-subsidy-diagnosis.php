@@ -4,7 +4,7 @@
  * Description: RAG機能を活用した補助金・助成金AI診断 - プロフェッショナル金融LP
  *
  * @package Grant_Insight_Perfect
- * @version 2.2.0
+ * @version 2.3.0
  */
 
 if (!defined('ABSPATH')) {
@@ -891,6 +891,7 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
     justify-content: center;
     gap: var(--diag-space-sm);
     padding: var(--diag-space-md) var(--diag-space-2xl);
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     font-family: var(--diag-font-sans);
     font-size: 15px;
     font-weight: 600;
@@ -1159,6 +1160,7 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
     background-color: var(--diag-white);
     border: 1px solid var(--diag-gray-300);
     padding: var(--diag-space-sm) var(--diag-space-lg);
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     font-size: 14px;
     font-family: var(--diag-font-sans);
     cursor: pointer;
@@ -1175,6 +1177,9 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
     padding: var(--diag-space-lg) var(--diag-space-xl);
     border-top: 1px solid var(--diag-gray-200);
     background-color: var(--diag-gray-50);
+    /* Sticky Footer準備 */
+    position: relative;
+    z-index: 100;
 }
 
 .diag-chat-input-wrapper {
@@ -1186,7 +1191,7 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
     flex: 1;
     padding: var(--diag-space-md) var(--diag-space-lg);
     border: 1px solid var(--diag-gray-300);
-    font-size: 15px;
+    font-size: 16px; /* iOS自動ズーム防止 - 16px必須 */
     font-family: var(--diag-font-sans);
     background-color: var(--diag-white);
     transition: border-color var(--diag-transition-fast);
@@ -1204,6 +1209,7 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
 .diag-chat-send {
     width: 52px;
     height: 52px;
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     background-color: var(--diag-black);
     color: var(--diag-white);
     border: none;
@@ -1236,6 +1242,7 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
     align-items: center;
     gap: var(--diag-space-sm);
     padding: var(--diag-space-sm) var(--diag-space-md);
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     background-color: transparent;
     border: 1px solid var(--diag-gray-300);
     font-size: 13px;
@@ -1663,6 +1670,280 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
 }
 
 /* ==========================================================================
+   Results Display Overrides (ai-concierge.php 結果表示との統合)
+   - 階層化された結果表示（上位1-5詳細、6-10補足）に対応
+   ========================================================================== */
+
+/* 結果エリア全体 */
+.diag-chat-body .gip-results {
+    background-color: var(--diag-white) !important;
+    border-radius: 0 !important;
+    border: 1px solid var(--diag-gray-200) !important;
+    margin-top: var(--diag-space-lg) !important;
+    overflow: hidden !important;
+}
+
+.diag-chat-body .gip-results-header {
+    padding: var(--diag-space-lg) var(--diag-space-xl) !important;
+    border-bottom: 1px solid var(--diag-gray-200) !important;
+    background-color: var(--diag-gray-50) !important;
+}
+
+.diag-chat-body .gip-results-title {
+    font-family: var(--diag-font-serif) !important;
+    color: var(--diag-black) !important;
+    font-weight: 600 !important;
+}
+
+.diag-chat-body .gip-results-count {
+    color: var(--diag-gray-600) !important;
+    font-size: 14px !important;
+}
+
+/* メイン結果カード（上位1-5位詳細表示） */
+.diag-chat-body .gip-results-grid-main .gip-result-card {
+    border: 1px solid var(--diag-gray-200) !important;
+    border-radius: 0 !important;
+    background-color: var(--diag-white) !important;
+    box-shadow: none !important;
+    transition: border-color var(--diag-transition-base), box-shadow var(--diag-transition-base) !important;
+    margin-bottom: var(--diag-space-lg) !important;
+}
+
+.diag-chat-body .gip-results-grid-main .gip-result-card:hover {
+    border-color: var(--diag-black) !important;
+    box-shadow: var(--diag-shadow-md) !important;
+}
+
+.diag-chat-body .gip-result-header {
+    background-color: var(--diag-gray-50) !important;
+    border-bottom: 1px solid var(--diag-gray-200) !important;
+}
+
+.diag-chat-body .gip-result-rank {
+    background-color: var(--diag-black) !important;
+    color: var(--diag-white) !important;
+    border-radius: 0 !important;
+}
+
+.diag-chat-body .gip-result-title {
+    font-family: var(--diag-font-serif) !important;
+    color: var(--diag-black) !important;
+}
+
+.diag-chat-body .gip-result-score {
+    background-color: var(--diag-white) !important;
+    border: 1px solid var(--diag-gray-200) !important;
+    border-radius: 0 !important;
+}
+
+.diag-chat-body .gip-result-score-value {
+    color: var(--diag-black) !important;
+    font-family: var(--diag-font-mono) !important;
+}
+
+.diag-chat-body .gip-result-body {
+    padding: var(--diag-space-lg) var(--diag-space-xl) !important;
+}
+
+.diag-chat-body .gip-result-meta-item {
+    background-color: var(--diag-gray-50) !important;
+    border: 1px solid var(--diag-gray-200) !important;
+    border-radius: 0 !important;
+}
+
+.diag-chat-body .gip-result-meta-label {
+    color: var(--diag-gray-600) !important;
+}
+
+.diag-chat-body .gip-result-meta-value {
+    color: var(--diag-black) !important;
+    font-weight: 600 !important;
+}
+
+.diag-chat-body .gip-result-actions {
+    padding: var(--diag-space-md) var(--diag-space-xl) !important;
+    border-top: 1px solid var(--diag-gray-200) !important;
+}
+
+.diag-chat-body .gip-result-btn {
+    border-radius: 0 !important;
+    min-height: 44px !important;
+}
+
+.diag-chat-body .gip-result-btn-primary {
+    background-color: var(--diag-black) !important;
+    color: var(--diag-white) !important;
+}
+
+.diag-chat-body .gip-result-btn-primary:hover {
+    background-color: var(--diag-gray-800) !important;
+}
+
+.diag-chat-body .gip-result-btn-secondary {
+    background-color: var(--diag-white) !important;
+    border: 1px solid var(--diag-gray-300) !important;
+    color: var(--diag-gray-700) !important;
+}
+
+.diag-chat-body .gip-result-btn-secondary:hover {
+    border-color: var(--diag-black) !important;
+    color: var(--diag-black) !important;
+}
+
+/* サブ結果カード（6-10位補足表示） */
+.diag-chat-body .gip-results-grid-sub {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: var(--diag-space-md) !important;
+    padding: var(--diag-space-lg) !important;
+    background-color: var(--diag-gray-50) !important;
+    border-top: 2px dashed var(--diag-gray-300) !important;
+}
+
+.diag-chat-body .gip-results-sub-title {
+    grid-column: span 2 !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: var(--diag-gray-600) !important;
+    margin-bottom: var(--diag-space-sm) !important;
+}
+
+.diag-chat-body .gip-results-grid-sub .gip-result-card-mini {
+    background-color: var(--diag-white) !important;
+    border: 1px solid var(--diag-gray-200) !important;
+    padding: var(--diag-space-md) !important;
+    transition: border-color var(--diag-transition-base) !important;
+}
+
+.diag-chat-body .gip-results-grid-sub .gip-result-card-mini:hover {
+    border-color: var(--diag-black) !important;
+}
+
+.diag-chat-body .gip-result-mini-rank {
+    display: inline-block !important;
+    background-color: var(--diag-gray-600) !important;
+    color: var(--diag-white) !important;
+    font-size: 11px !important;
+    padding: 2px 8px !important;
+    margin-bottom: var(--diag-space-xs) !important;
+}
+
+.diag-chat-body .gip-result-mini-title {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: var(--diag-black) !important;
+    line-height: 1.4 !important;
+}
+
+.diag-chat-body .gip-result-mini-amount {
+    font-size: 12px !important;
+    color: var(--diag-gray-600) !important;
+    margin-top: var(--diag-space-xs) !important;
+}
+
+/* 比較モーダル統合 */
+.diag-chat-body .gip-comparison-modal .gip-comparison-content {
+    border-radius: 0 !important;
+}
+
+.diag-chat-body .gip-comparison-modal .gip-comparison-header {
+    background-color: var(--diag-white) !important;
+    border-bottom: 2px solid var(--diag-black) !important;
+}
+
+.diag-chat-body .gip-comparison-modal .gip-comparison-title {
+    font-family: var(--diag-font-serif) !important;
+}
+
+.diag-chat-body .gip-comparison-modal .gip-comparison-close {
+    border-radius: 0 !important;
+    background-color: var(--diag-gray-100) !important;
+}
+
+.diag-chat-body .gip-comparison-modal .table-header {
+    background-color: var(--diag-black) !important;
+}
+
+/* 続きオプション・再検索ボタン */
+.diag-chat-body .gip-continue-chat {
+    border-top: 2px solid var(--diag-gray-200) !important;
+    padding-top: var(--diag-space-xl) !important;
+    margin-top: var(--diag-space-xl) !important;
+}
+
+.diag-chat-body .gip-continue-title {
+    font-family: var(--diag-font-serif) !important;
+    color: var(--diag-gray-700) !important;
+}
+
+.diag-chat-body .gip-continue-options .gip-option-btn {
+    border: 1px solid var(--diag-gray-300) !important;
+    border-radius: 0 !important;
+    min-height: 44px !important;
+}
+
+/* ロード更多ボタン */
+.diag-chat-body .gip-btn-load-more {
+    border: 2px solid var(--diag-gray-300) !important;
+    border-radius: 0 !important;
+    background-color: var(--diag-white) !important;
+    min-height: 44px !important;
+}
+
+.diag-chat-body .gip-btn-load-more:hover {
+    border-color: var(--diag-black) !important;
+    color: var(--diag-black) !important;
+}
+
+/* バッジスタイル統合 */
+.diag-chat-body .gip-badge {
+    border-radius: 0 !important;
+}
+
+.diag-chat-body .gip-badge-success {
+    background-color: var(--diag-gray-100) !important;
+    color: var(--diag-black) !important;
+    border: 1px solid var(--diag-gray-300) !important;
+}
+
+.diag-chat-body .gip-badge-warning {
+    background-color: var(--diag-gray-200) !important;
+    color: var(--diag-gray-700) !important;
+}
+
+/* 空状態 */
+.diag-chat-body .gip-empty-state {
+    padding: var(--diag-space-3xl) var(--diag-space-xl) !important;
+}
+
+.diag-chat-body .gip-empty-state-title {
+    font-family: var(--diag-font-serif) !important;
+    color: var(--diag-black) !important;
+}
+
+/* ローディング状態 */
+.diag-chat-body .gip-loading-overlay {
+    background: rgba(255,255,255,0.95) !important;
+}
+
+.diag-chat-body .gip-spinner-large {
+    border-color: var(--diag-gray-200) !important;
+    border-top-color: var(--diag-black) !important;
+}
+
+/* タイピングアニメーション統合 */
+.diag-chat-body .gip-typing-indicator {
+    background-color: var(--diag-gray-50) !important;
+    border: 1px solid var(--diag-gray-200) !important;
+    border-radius: 0 !important;
+}
+
+.diag-chat-body .gip-typing-dot {
+    background-color: var(--diag-gray-500) !important;
+}
+
+/* ==========================================================================
    Responsive Styles
    ========================================================================== */
 @media (max-width: 1024px) {
@@ -1678,6 +1959,47 @@ $page_description = '補助金診断が無料で利用可能。AIが事業内容
     
     .diag-section {
         padding: var(--diag-space-3xl) 0;
+    }
+    
+    /* Sticky Footer - モバイル時に入力欄を固定 */
+    .diag-chat-wrapper {
+        display: flex;
+        flex-direction: column;
+        max-height: 80vh;
+        max-height: 80dvh; /* iOS Safari dynamic viewport対応 */
+    }
+    
+    .diag-chat-body {
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* iOS スムーズスクロール */
+    }
+    
+    .diag-chat-footer {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding-bottom: calc(var(--diag-space-lg) + env(safe-area-inset-bottom, 0px)); /* iPhone X以降のノッチ対応 */
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+    }
+    
+    /* iOS拡大防止 - モバイルでも16px維持 */
+    .diag-chat-input {
+        font-size: 16px !important;
+    }
+    
+    /* モバイル結果表示最適化 */
+    .diag-chat-body .gip-results-grid-sub {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .diag-chat-body .gip-results-sub-title {
+        grid-column: span 1 !important;
+    }
+    
+    .diag-chat-body .gip-result-meta {
+        grid-template-columns: 1fr 1fr !important;
     }
     
     .diag-hero__grid {

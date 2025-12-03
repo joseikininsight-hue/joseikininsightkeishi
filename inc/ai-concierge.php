@@ -1254,7 +1254,7 @@ function gip_api_chat($request) {
 }
 
 /**
- * 自然言語対話フロー処理
+ * 自然言語対話フロー処理 - UX最適化版 v7.1.0
  */
 function gip_process_natural_conversation($session_id, $context, $user_input, $step) {
     global $wpdb;
@@ -1266,8 +1266,51 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
     $option_type = 'single';
     $hint = '';
     $results = array();
+    $main_results = array();
+    $sub_results = array();
     $show_comparison = false;
     $allow_input = false;
+    $show_reset_option = false;
+    $show_research_option = false;
+    
+    // セッションリセット検知（最初から、やり直す、リセット等）
+    if (gip_detect_reset_intent($user_input)) {
+        $context = array('step' => 'init', 'understanding_level' => 0, 'collected_info' => array());
+        $wpdb->update(gip_table('sessions'), array('context' => wp_json_encode($context)), array('session_id' => $session_id));
+        
+        $welcome = "了解しました！最初からやり直しましょう。\n\n";
+        $welcome .= "補助金・助成金コンシェルジュへようこそ！\n\n";
+        $welcome .= "あなたに最適な補助金をお探しするために、いくつかお伺いします。\n\n";
+        $welcome .= "まず、あなたのお立場を教えてください。";
+        
+        $wpdb->insert(gip_table('messages'), array(
+            'session_id' => $session_id,
+            'role' => 'assistant',
+            'content' => $welcome,
+        ));
+        
+        return array(
+            'success' => true,
+            'session_id' => $session_id,
+            'message' => $welcome,
+            'options' => array(
+                array('id' => 'corporation', 'label' => '法人（株式会社・合同会社など）'),
+                array('id' => 'individual_business', 'label' => '個人事業主・フリーランス'),
+                array('id' => 'startup', 'label' => 'これから起業・創業予定'),
+                array('id' => 'npo', 'label' => 'NPO・社団法人・財団法人'),
+                array('id' => 'personal', 'label' => '会社員・主婦・学生など（個人）'),
+            ),
+            'option_type' => 'single',
+            'hint' => '該当するものを選択してください。個人の方でも使える補助金・給付金もございます。',
+            'allow_input' => false,
+        );
+    }
+    
+    // 再検索意図検知
+    $research_intent = gip_detect_research_intent($user_input, $collected);
+    if ($research_intent && ($step === 'results' || $step === 'followup')) {
+        return gip_handle_research($session_id, $context, $user_input, $research_intent);
+    }
     
     switch ($step) {
         case 'init':
@@ -1350,18 +1393,37 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
         case 'purpose':
             $collected['purpose'] = $user_input;
             
-            $analysis = gip_analyze_user_needs($collected);
+            // 深掘り質問が必要かどうかを判定（Deep Dive機能）
+            $analysis = gip_analyze_user_needs_deep($collected, $context);
             
-            if ($analysis['needs_clarification']) {
+            if ($analysis['needs_clarification'] && ($context['deep_dive_count'] ?? 0) < 3) {
+                $context['deep_dive_count'] = ($context['deep_dive_count'] ?? 0) + 1;
                 $next_step = 'clarification';
                 $response_text = $analysis['question'];
                 $options = $analysis['options'] ?? array();
                 $hint = $analysis['hint'] ?? '';
                 $allow_input = true;
+                $show_reset_option = true;
             } else {
                 $next_step = 'searching';
                 $response_text = gip_build_search_confirmation($collected);
                 
+                // 検索確認オプション
+                $response_text .= "\n\nこの内容で検索してよろしいですか？";
+                
+                $options = array(
+                    array('id' => 'search', 'label' => '🔍 この条件で検索する'),
+                    array('id' => 'add_detail', 'label' => '📝 詳細条件を追加する'),
+                    array('id' => 'restart', 'label' => '🔄 最初からやり直す'),
+                );
+                $hint = '条件を変更したい場合は「詳細条件を追加」を選択してください。';
+                $allow_input = true;
+            }
+            break;
+            
+        case 'searching':
+            // 検索確認後の処理
+            if (strpos($user_input, 'search') !== false || strpos($user_input, '検索') !== false || $user_input === '🔍 この条件で検索する') {
                 $filters = array(
                     'user_type' => $collected['user_type'] ?? '',
                     'prefecture' => $collected['prefecture'] ?? '',
@@ -1373,44 +1435,37 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
                 
                 if (!empty($results)) {
                     $count = count($results);
-                    $response_text .= "\n\n🎉 検索が完了しました！\n\n";
+                    $response_text = "🎉 検索が完了しました！\n\n";
                     $response_text .= "【" . $count . "件】の補助金・助成金が見つかりました。\n";
                     $response_text .= "マッチ度の高い順に表示しています。";
                     
                     $next_step = 'results';
                     $show_comparison = true;
+                    $show_research_option = true;
                 } else {
-                    $response_text .= "\n\n申し訳ございません。条件に合う補助金が見つかりませんでした。\n\n";
+                    $response_text = "申し訳ございません。条件に合う補助金が見つかりませんでした。\n\n";
                     $response_text .= "条件を変更して再検索しますか？";
                     
                     $next_step = 'no_result';
                     $options = array(
-                        array('id' => 'expand_area', 'label' => '都道府県全域で探す'),
-                        array('id' => 'national', 'label' => '全国対応の補助金を探す'),
-                        array('id' => 'change_purpose', 'label' => '目的を変えて探す'),
-                        array('id' => 'restart', 'label' => '最初からやり直す'),
+                        array('id' => 'expand_area', 'label' => '📍 都道府県全域で探す'),
+                        array('id' => 'national', 'label' => '🌏 全国対応の補助金を探す'),
+                        array('id' => 'change_purpose', 'label' => '🎯 目的を変えて探す'),
+                        array('id' => 'restart', 'label' => '🔄 最初からやり直す'),
                     );
                     $hint = '条件を広げると見つかる可能性があります。';
                 }
-            }
-            break;
-            
-        case 'clarification':
-            $collected['clarification'] = $user_input;
-            
-            $analysis = gip_analyze_user_needs($collected);
-            
-            if ($analysis['needs_clarification'] && ($context['clarification_count'] ?? 0) < 3) {
-                $context['clarification_count'] = ($context['clarification_count'] ?? 0) + 1;
-                $next_step = 'clarification';
-                $response_text = $analysis['question'];
-                $options = $analysis['options'] ?? array();
-                $hint = $analysis['hint'] ?? '';
+            } elseif (strpos($user_input, 'add_detail') !== false || strpos($user_input, '詳細') !== false || strpos($user_input, '追加') !== false) {
+                $next_step = 'add_detail';
+                $response_text = "追加の条件や詳細を教えてください。\n\n";
+                $response_text .= "例：\n";
+                $response_text .= "・予算規模（100万円以内など）\n";
+                $response_text .= "・具体的な用途（〇〇の購入など）\n";
+                $response_text .= "・希望する締切時期";
                 $allow_input = true;
+                $hint = '具体的な条件を入力してください。';
             } else {
-                $next_step = 'searching';
-                $response_text = gip_build_search_confirmation($collected);
-                
+                // デフォルトで検索を実行
                 $filters = array(
                     'user_type' => $collected['user_type'] ?? '',
                     'prefecture' => $collected['prefecture'] ?? '',
@@ -1422,17 +1477,66 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
                 
                 if (!empty($results)) {
                     $count = count($results);
-                    $response_text .= "\n\n🎉 検索が完了しました！\n【" . $count . "件】の補助金が見つかりました。";
+                    $response_text = "🎉 検索が完了しました！\n\n";
+                    $response_text .= "【" . $count . "件】の補助金・助成金が見つかりました。\n";
+                    $response_text .= "マッチ度の高い順に表示しています。";
+                    
                     $next_step = 'results';
                     $show_comparison = true;
+                    $show_research_option = true;
                 } else {
-                    $response_text .= "\n\n条件に合う補助金が見つかりませんでした。";
+                    $response_text = "申し訳ございません。条件に合う補助金が見つかりませんでした。";
                     $next_step = 'no_result';
                     $options = array(
-                        array('id' => 'expand_area', 'label' => '条件を広げて探す'),
-                        array('id' => 'restart', 'label' => '最初からやり直す'),
+                        array('id' => 'expand_area', 'label' => '📍 都道府県全域で探す'),
+                        array('id' => 'national', 'label' => '🌏 全国対応の補助金を探す'),
+                        array('id' => 'change_purpose', 'label' => '🎯 目的を変えて探す'),
+                        array('id' => 'restart', 'label' => '🔄 最初からやり直す'),
                     );
                 }
+            }
+            break;
+            
+        case 'add_detail':
+            // 追加条件を収集
+            $collected['additional_details'] = ($collected['additional_details'] ?? '') . ' ' . $user_input;
+            
+            $next_step = 'searching';
+            $response_text = gip_build_search_confirmation($collected);
+            $response_text .= "\n\nこの内容で検索してよろしいですか？";
+            
+            $options = array(
+                array('id' => 'search', 'label' => '🔍 この条件で検索する'),
+                array('id' => 'add_detail', 'label' => '📝 さらに詳細を追加'),
+                array('id' => 'restart', 'label' => '🔄 最初からやり直す'),
+            );
+            $allow_input = true;
+            break;
+            
+        case 'clarification':
+            $collected['clarification'] = ($collected['clarification'] ?? '') . ' ' . $user_input;
+            
+            $analysis = gip_analyze_user_needs_deep($collected, $context);
+            
+            if ($analysis['needs_clarification'] && ($context['deep_dive_count'] ?? 0) < 3) {
+                $context['deep_dive_count'] = ($context['deep_dive_count'] ?? 0) + 1;
+                $next_step = 'clarification';
+                $response_text = $analysis['question'];
+                $options = $analysis['options'] ?? array();
+                $hint = $analysis['hint'] ?? '';
+                $allow_input = true;
+                $show_reset_option = true;
+            } else {
+                $next_step = 'searching';
+                $response_text = gip_build_search_confirmation($collected);
+                $response_text .= "\n\nこの内容で検索してよろしいですか？";
+                
+                $options = array(
+                    array('id' => 'search', 'label' => '🔍 この条件で検索する'),
+                    array('id' => 'add_detail', 'label' => '📝 詳細条件を追加する'),
+                    array('id' => 'restart', 'label' => '🔄 最初からやり直す'),
+                );
+                $allow_input = true;
             }
             break;
             
@@ -1547,9 +1651,25 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
     }
     
     if (!empty($results)) {
+        // メイン5件とサブ5件に分割
+        $main_results = array_slice($results, 0, 5);
+        $sub_results = array_slice($results, 5, 5);
+        
         $response['results'] = $results;
+        $response['main_results'] = $main_results;
+        $response['sub_results'] = $sub_results;
         $response['results_count'] = count($results);
         $response['show_comparison'] = $show_comparison;
+    }
+    
+    // 再検索オプションのフラグ
+    if ($show_research_option || $next_step === 'results') {
+        $response['show_research_option'] = true;
+    }
+    
+    // リセットオプションのフラグ
+    if ($show_reset_option) {
+        $response['show_reset_option'] = true;
     }
     
     return $response;
@@ -1752,11 +1872,286 @@ JSON形式のみで出力してください。";
     return array('needs_clarification' => false);
 }
 
+/**
+ * リセット意図の検知
+ */
+function gip_detect_reset_intent($input) {
+    $reset_keywords = array(
+        '最初から', 'やり直す', 'やり直し', 'リセット', 'reset',
+        '最初に戻る', '戻る', 'はじめから', '初めから',
+        '新しく', '新規', '最初へ', 'クリア', 'clear',
+    );
+    
+    $input_lower = mb_strtolower($input);
+    foreach ($reset_keywords as $keyword) {
+        if (strpos($input_lower, $keyword) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * 再検索意図の検知
+ */
+function gip_detect_research_intent($input, $collected) {
+    $input_lower = mb_strtolower($input);
+    
+    // 異なる補助金を探す意図
+    if (preg_match('/(違う|別の|他の).*(補助金|助成金|制度)/', $input)) {
+        return array('type' => 'different_grant', 'original' => $input);
+    }
+    
+    // 用途変更での検索
+    if (preg_match('/(設備投資|人材|IT|DX|販路|海外|省エネ|環境|セキュリティ|研究開発).*(で|の|を).*?(探|使える|申請|補助)/', $input)) {
+        return array('type' => 'change_purpose', 'new_purpose' => $input);
+    }
+    
+    // 「〜で使える補助金」パターン
+    if (preg_match('/(.+)(で|に)(使える|申請できる|もらえる).*(補助金|助成金)/', $input, $matches)) {
+        return array('type' => 'change_purpose', 'new_purpose' => $matches[1]);
+    }
+    
+    // 条件変更キーワード
+    $condition_keywords = array(
+        '条件を変えて', '条件変更', '他の補助金', '別の補助金',
+        '違う補助金', '再検索', '検索し直', '探し直',
+    );
+    
+    foreach ($condition_keywords as $keyword) {
+        if (strpos($input_lower, $keyword) !== false) {
+            return array('type' => 'new_search', 'original' => $input);
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * 再検索処理
+ */
+function gip_handle_research($session_id, $context, $user_input, $research_intent) {
+    global $wpdb;
+    
+    $collected = $context['collected_info'] ?? array();
+    
+    switch ($research_intent['type']) {
+        case 'different_grant':
+        case 'change_purpose':
+            // 目的を変更して再検索
+            if (!empty($research_intent['new_purpose'])) {
+                $collected['purpose'] = $research_intent['new_purpose'];
+            } else {
+                // 目的入力をリクエスト
+                $response_text = "承知しました。新しい条件で補助金をお探しします。\n\n";
+                $response_text .= "どのような目的で補助金をお探しですか？";
+                
+                $options = gip_get_purpose_options($collected['user_type'] ?? 'corporation');
+                
+                $context['step'] = 'purpose';
+                $context['collected_info'] = $collected;
+                $wpdb->update(gip_table('sessions'), array('context' => wp_json_encode($context)), array('session_id' => $session_id));
+                
+                return array(
+                    'success' => true,
+                    'session_id' => $session_id,
+                    'message' => $response_text,
+                    'options' => $options,
+                    'option_type' => 'single',
+                    'hint' => '選択肢から選ぶか、自由にお書きください。',
+                    'allow_input' => true,
+                    'can_continue' => false,
+                );
+            }
+            break;
+            
+        case 'new_search':
+            // 新しい検索フロー
+            $response_text = "新しい条件で補助金をお探しします。\n\n";
+            $response_text .= "どのような目的で補助金をお探しですか？";
+            
+            $options = gip_get_purpose_options($collected['user_type'] ?? 'corporation');
+            
+            $context['step'] = 'purpose';
+            $context['collected_info'] = $collected;
+            $wpdb->update(gip_table('sessions'), array('context' => wp_json_encode($context)), array('session_id' => $session_id));
+            
+            return array(
+                'success' => true,
+                'session_id' => $session_id,
+                'message' => $response_text,
+                'options' => $options,
+                'option_type' => 'single',
+                'hint' => '選択肢から選ぶか、自由にお書きください。',
+                'allow_input' => true,
+                'can_continue' => false,
+            );
+    }
+    
+    // 再検索実行
+    $filters = array(
+        'user_type' => $collected['user_type'] ?? '',
+        'prefecture' => $collected['prefecture'] ?? '',
+        'municipality' => $collected['municipality'] ?? '',
+        'status_open' => true,
+    );
+    
+    $results = gip_execute_match($session_id, gip_build_natural_search_query($collected), $filters, $collected);
+    
+    $response_text = "新しい条件で検索した結果、";
+    
+    if (!empty($results)) {
+        $response_text .= "【" . count($results) . "件】の補助金が見つかりました！";
+        
+        $context['step'] = 'results';
+        $context['collected_info'] = $collected;
+        $wpdb->update(gip_table('sessions'), array('context' => wp_json_encode($context)), array('session_id' => $session_id));
+        
+        return array(
+            'success' => true,
+            'session_id' => $session_id,
+            'message' => $response_text,
+            'results' => $results,
+            'results_count' => count($results),
+            'show_comparison' => true,
+            'can_continue' => true,
+            'allow_input' => true,
+            'show_research_option' => true,
+        );
+    } else {
+        $response_text .= "条件に合う補助金が見つかりませんでした。\n\n";
+        $response_text .= "条件を変更して再検索しますか？";
+        
+        return array(
+            'success' => true,
+            'session_id' => $session_id,
+            'message' => $response_text,
+            'options' => array(
+                array('id' => 'expand_area', 'label' => '📍 都道府県全域で探す'),
+                array('id' => 'national', 'label' => '🌏 全国対応の補助金を探す'),
+                array('id' => 'change_purpose', 'label' => '🎯 目的を変えて探す'),
+                array('id' => 'restart', 'label' => '🔄 最初からやり直す'),
+            ),
+            'can_continue' => false,
+            'allow_input' => true,
+        );
+    }
+}
+
+/**
+ * 深掘り質問の分析（Deep Dive機能）
+ */
+function gip_analyze_user_needs_deep($collected, $context = array()) {
+    $purpose = $collected['purpose'] ?? '';
+    $clarification = $collected['clarification'] ?? '';
+    $additional = $collected['additional_details'] ?? '';
+    $deep_dive_count = $context['deep_dive_count'] ?? 0;
+    
+    // 曖昧な入力パターン
+    $vague_patterns = array(
+        'it' => array(
+            'pattern' => '/^(it|IT|アイティー)$/i',
+            'question' => "ITに関する補助金ですね。もう少し具体的に教えていただけますか？\n\nどのようなIT投資をお考えですか？",
+            'options' => array(
+                array('id' => 'accounting', 'label' => '💼 会計・経理ソフト'),
+                array('id' => 'crm', 'label' => '📊 顧客管理・CRM'),
+                array('id' => 'ec', 'label' => '🛒 ECサイト・オンライン販売'),
+                array('id' => 'security', 'label' => '🔒 セキュリティ対策'),
+                array('id' => 'rpa', 'label' => '🤖 業務自動化・RPA'),
+                array('id' => 'cloud', 'label' => '☁️ クラウドサービス導入'),
+            ),
+            'hint' => '具体的な用途を教えていただくと、より適切な補助金をご案内できます。',
+        ),
+        'equipment' => array(
+            'pattern' => '/^(設備|機械|設備投資)$/i',
+            'question' => "設備投資をお考えですね。どのような設備をご検討されていますか？",
+            'options' => array(
+                array('id' => 'production', 'label' => '🏭 生産設備・製造機械'),
+                array('id' => 'vehicle', 'label' => '🚚 車両・運搬設備'),
+                array('id' => 'office', 'label' => '🖥️ オフィス機器・PC'),
+                array('id' => 'store', 'label' => '🏪 店舗設備・内装'),
+                array('id' => 'energy', 'label' => '⚡ 省エネ・再エネ設備'),
+            ),
+            'hint' => '具体的な設備の種類を教えてください。',
+        ),
+        'hr' => array(
+            'pattern' => '/^(人材|採用|雇用|育成)$/i',
+            'question' => "人材に関する補助金ですね。どのようなことをお考えですか？",
+            'options' => array(
+                array('id' => 'hiring', 'label' => '👥 新規採用・増員'),
+                array('id' => 'training', 'label' => '📚 社員教育・研修'),
+                array('id' => 'welfare', 'label' => '🏥 福利厚生・働き方改革'),
+                array('id' => 'senior', 'label' => '👴 高齢者・障害者雇用'),
+            ),
+            'hint' => '人材関連の補助金は種類が豊富です。目的を絞ると探しやすくなります。',
+        ),
+    );
+    
+    // 曖昧パターンのチェック
+    foreach ($vague_patterns as $key => $pattern_info) {
+        if (preg_match($pattern_info['pattern'], $purpose)) {
+            return array(
+                'needs_clarification' => true,
+                'question' => $pattern_info['question'],
+                'options' => $pattern_info['options'],
+                'hint' => $pattern_info['hint'],
+            );
+        }
+    }
+    
+    // AIによる深掘り判定（深掘り回数が少なく、情報が少ない場合）
+    if ($deep_dive_count < 2 && mb_strlen($purpose . $clarification . $additional) < 20) {
+        $prompt = "以下のユーザー情報を分析し、補助金検索に十分な情報があるか判断してください。
+
+## ユーザー情報
+- 属性: " . ($collected['user_type_label'] ?? '不明') . "
+- 都道府県: " . ($collected['prefecture'] ?? '不明') . "
+- 市区町村: " . ($collected['municipality'] ?? '全域') . "
+- 目的・要望: " . $purpose . "
+- 追加情報: " . $clarification . " " . $additional . "
+
+## タスク
+情報が十分であれば {\"needs_clarification\": false} を返してください。
+情報が不足している場合は、以下の形式で質問を1つだけ生成してください：
+
+{
+  \"needs_clarification\": true,
+  \"question\": \"具体的な質問文（100文字以内、丁寧で親しみやすい口調）\",
+  \"hint\": \"回答のヒント（50文字以内）\",
+  \"options\": [
+    {\"id\": \"opt1\", \"label\": \"選択肢1\"},
+    {\"id\": \"opt2\", \"label\": \"選択肢2\"},
+    {\"id\": \"opt3\", \"label\": \"選択肢3\"}
+  ]
+}
+
+## 注意
+- 質問は最大2回まで。それ以上は不要
+- 具体的で答えやすい質問にする
+- 選択肢は3〜5個で、絵文字を使って分かりやすく
+
+JSON形式のみで出力してください。";
+
+        $response = gip_call_gemini($prompt, array('temperature' => 0.3, 'max_tokens' => 500));
+        
+        if (!is_wp_error($response)) {
+            if (preg_match('/\{[\s\S]*\}/', $response, $matches)) {
+                $parsed = json_decode($matches[0], true);
+                if (is_array($parsed)) {
+                    return $parsed;
+                }
+            }
+        }
+    }
+    
+    return array('needs_clarification' => false);
+}
+
 function gip_build_search_confirmation($collected) {
     $text = "ありがとうございます。以下の条件で補助金を検索します。\n\n";
-    $text .= "━━━━━━━━━━━━━━━━━━━━\n";
+    $text .= "──────────────────\n";
     $text .= "📋 検索条件\n";
-    $text .= "━━━━━━━━━━━━━━━━━━━━\n";
+    $text .= "──────────────────\n\n";
     
     if (!empty($collected['user_type_label'])) {
         $text .= "👤 お立場: " . $collected['user_type_label'] . "\n";
@@ -1772,6 +2167,18 @@ function gip_build_search_confirmation($collected) {
     
     if (!empty($collected['purpose'])) {
         $text .= "🎯 目的: " . mb_substr($collected['purpose'], 0, 50) . "\n";
+    }
+    
+    // 追加情報があれば表示
+    $additional_info = array();
+    if (!empty($collected['clarification'])) {
+        $additional_info[] = mb_substr($collected['clarification'], 0, 50);
+    }
+    if (!empty($collected['additional_details'])) {
+        $additional_info[] = mb_substr($collected['additional_details'], 0, 50);
+    }
+    if (!empty($additional_info)) {
+        $text .= "📝 追加条件:  " . implode(', ', $additional_info) . "\n";
     }
     
     return $text;
@@ -2347,6 +2754,7 @@ function gip_frontend_css() {
 
 .gip-option-btn {
     padding: 12px 20px;
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     font-size: 14px;
     font-weight: 600;
     border: 2px solid var(--gip-gray-200);
@@ -2383,7 +2791,7 @@ function gip_frontend_css() {
     width: 100%;
     max-width: 320px;
     padding: 14px 40px 14px 16px;
-    font-size: 15px;
+    font-size: 16px; /* iOS自動ズーム防止 - 16px必須 */
     font-family: inherit;
     border: 2px solid var(--gip-gray-200);
     border-radius: 8px;
@@ -2414,7 +2822,7 @@ function gip_frontend_css() {
     padding: 12px 14px;
     border: 2px solid var(--gip-gray-200);
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 16px; /* iOS自動ズーム防止 - 16px必須 */
     font-family: inherit;
     transition: border-color var(--gip-transition);
 }
@@ -2428,6 +2836,7 @@ function gip_frontend_css() {
 .gip-input-inline button,
 .gip-inline-submit {
     padding: 12px 20px;
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     background: var(--gip-accent);
     color: var(--gip-white);
     border: none;
@@ -2472,6 +2881,9 @@ function gip_frontend_css() {
     padding: 20px 24px;
     border-top: 1px solid var(--gip-gray-200);
     background: var(--gip-white);
+    /* Sticky Footer - モバイル時に入力欄を固定 */
+    position: relative;
+    z-index: 100;
 }
 
 .gip-chat-input-wrap {
@@ -2485,7 +2897,7 @@ function gip_frontend_css() {
     padding: 14px 18px;
     border: 2px solid var(--gip-gray-200);
     border-radius: 24px;
-    font-size: 15px;
+    font-size: 16px; /* iOS自動ズーム防止 - 16px必須 */
     font-family: inherit;
     resize: none;
     max-height: 120px;
@@ -2793,6 +3205,7 @@ function gip_frontend_css() {
 .gip-result-btn {
     flex: 1;
     min-width: 120px;
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     padding: 12px 20px;
     text-align: center;
     font-size: 14px;
@@ -2869,7 +3282,8 @@ function gip_frontend_css() {
 }
 
 .gip-feedback-btn {
-    padding: 6px 14px;
+    padding: 10px 14px;
+    min-height: 44px; /* タップ領域確保 - Apple HIG準拠 */
     font-size: 13px;
     font-family: inherit;
     border: 1px solid var(--gip-gray-300);
@@ -3120,6 +3534,21 @@ function gip_frontend_css() {
     .gip-chat {
         border-radius: 0;
         border-width: 0 0 1px 0;
+        /* モバイル時のフルスクリーン対応 */
+        display: flex;
+        flex-direction: column;
+        max-height: 100vh;
+        max-height: 100dvh; /* iOS Safari dynamic viewport対応 */
+    }
+    
+    /* Sticky Footer - モバイル時に入力欄を画面下部に固定 */
+    .gip-chat-input-area {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); /* iPhone X以降のノッチ対応 */
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
     }
     
     .gip-chat-header {
@@ -3133,7 +3562,10 @@ function gip_frontend_css() {
     .gip-chat-messages {
         padding: 16px;
         min-height: 300px;
-        max-height: 400px;
+        max-height: none; /* Sticky Footerと連動 - flex-growで調整 */
+        flex: 1;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* iOS スムーズスクロール */
     }
     
     .gip-message-content {
@@ -3147,11 +3579,12 @@ function gip_frontend_css() {
     
     .gip-chat-input-area {
         padding: 16px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); /* iPhone X以降対応 */
     }
     
     .gip-chat-input {
         padding: 12px 16px;
-        font-size: 14px;
+        font-size: 16px; /* iOS自動ズーム防止 - モバイルでも16px維持 */
     }
     
     .gip-results {
@@ -3867,10 +4300,16 @@ function gip_frontend_js() {
             this.$messages.find('.gip-message-typing-wrap').remove();
         },
         
-        renderResults: function(showComparison) {
+        renderResults: function(showComparison, response) {
             var self = this;
-            var resultsToShow = self.allResults.slice(0, self.resultsPerPage);
-            self.displayedCount = resultsToShow.length;
+            response = response || {};
+            
+            // メイン5件とサブ5件に分割
+            var mainResults = response.main_results || self.allResults.slice(0, 5);
+            var subResults = response.sub_results || self.allResults.slice(5, 10);
+            var remainingResults = self.allResults.slice(10);
+            
+            self.displayedCount = mainResults.length + subResults.length;
             
             var html = '<div class="gip-results-header">';
             html += '<div>';
@@ -3883,17 +4322,43 @@ function gip_frontend_js() {
             }
             html += '</div>';
             
-            html += '<div class="gip-results-grid">';
-            for (var i = 0; i < resultsToShow.length; i++) {
-                html += self.renderResultCard(resultsToShow[i], i);
+            // メイン5件（本命・大きく表示）
+            if (mainResults.length > 0) {
+                html += '<div class="gip-results-main">';
+                html += '<h4 class="gip-results-section-title">✨ おすすめの補助金</h4>';
+                html += '<div class="gip-results-grid gip-results-grid-main">';
+                for (var i = 0; i < mainResults.length; i++) {
+                    html += self.renderResultCard(mainResults[i], i, false);
+                }
+                html += '</div></div>';
             }
-            html += '</div>';
             
-            if (self.allResults.length > self.displayedCount) {
-                var remaining = self.allResults.length - self.displayedCount;
+            // サブ5件（小さいカード表示）
+            if (subResults.length > 0) {
+                html += '<div class="gip-results-sub">';
+                html += '<h4 class="gip-results-section-title">🔍 他にもこのような補助金があります</h4>';
+                html += '<div class="gip-results-grid gip-results-grid-sub">';
+                for (var i = 0; i < subResults.length; i++) {
+                    html += self.renderSubResultCard(subResults[i], i + 5);
+                }
+                html += '</div></div>';
+            }
+            
+            // 残りがあればロードモア
+            if (remainingResults.length > 0) {
                 html += '<div class="gip-load-more">';
-                html += '<button type="button" class="gip-btn-load-more">さらに表示（残り' + remaining + '件）</button>';
+                html += '<button type="button" class="gip-btn-load-more">さらに表示（残り' + remainingResults.length + '件）</button>';
                 html += '</div>';
+            }
+            
+            // 再検索オプション
+            if (response.show_research_option) {
+                html += '<div class="gip-research-options">';
+                html += '<p class="gip-research-title">🔄 条件を変えて検索しますか？</p>';
+                html += '<div class="gip-research-btns">';
+                html += '<button type="button" class="gip-option-btn gip-research-btn" data-value="他の補助金を探したい">他の補助金を探す</button>';
+                html += '<button type="button" class="gip-option-btn gip-research-btn" data-value="最初からやり直す">最初からやり直す</button>';
+                html += '</div></div>';
             }
             
             self.$results.html(html).slideDown(300);
@@ -3905,8 +4370,32 @@ function gip_frontend_js() {
             }, 100);
         },
         
-        renderResultCard: function(r, index) {
+        // サブ結果カード（小さい表示）
+        renderSubResultCard: function(r, index) {
             var self = this;
+            
+            var html = '<div class="gip-result-card gip-result-card-sub" data-grant-id="' + r.grant_id + '">';
+            html += '<div class="gip-result-sub-content">';
+            html += '<div class="gip-result-sub-rank">' + (index + 1) + '</div>';
+            html += '<div class="gip-result-sub-info">';
+            html += '<h5 class="gip-result-sub-title">' + self.escapeHtml(r.title) + '</h5>';
+            html += '<div class="gip-result-sub-meta">';
+            if (r.amount_display || r.max_amount) {
+                html += '<span class="gip-result-sub-amount">💰 ' + self.escapeHtml(r.amount_display || r.max_amount) + '</span>';
+            }
+            if (r.score) {
+                html += '<span class="gip-result-sub-score">マッチ度 ' + r.score + '点</span>';
+            }
+            html += '</div></div>';
+            html += '<button type="button" class="gip-btn-ask-about gip-sub-ask-btn" data-grant-id="' + r.grant_id + '" data-title="' + self.escapeHtml(r.title) + '">詳しく</button>';
+            html += '</div></div>';
+            
+            return html;
+        },
+        
+        renderResultCard: function(r, index, isSub) {
+            var self = this;
+            isSub = isSub || false;
             var rankClass = '';
             
             if (index === 0) rankClass = ' gip-result-rank-1';
