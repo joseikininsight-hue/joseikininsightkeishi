@@ -427,21 +427,42 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
 
 <script>
 /**
- * Front Page JS - v11.0
+ * Front Page JS - v12.0 (Performance Optimized)
+ * カクカク問題修正: scrollHeight/innerHeightをキャッシュ化
  */
 (function() {
     'use strict';
+    
+    // ★パフォーマンス改善: 高さをキャッシュ
+    let cachedWinH = window.innerHeight;
+    let cachedDocH = document.documentElement.scrollHeight;
+    let resizeTimer;
+    
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            cachedWinH = window.innerHeight;
+            cachedDocH = document.documentElement.scrollHeight;
+        }, 150);
+    }, {passive: true});
+    
+    // DOMContentLoaded後に高さを再取得
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                cachedDocH = document.documentElement.scrollHeight;
+            }, 100);
+            init();
+        });
     } else {
         init();
     }
     
     function init() {
         setupScrollProgress();
-        setupSectionAnimations();
+        // アニメーションは即座に表示（カクカク防止）
+        document.querySelectorAll('.section-animate').forEach(el => el.classList.add('visible'));
         setupSmoothScroll();
-        // パフォーマンス & SEO監視
         if('performance' in window) monitorPerf();
         setupSEOTracking();
     }
@@ -453,36 +474,14 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
         window.addEventListener('scroll', () => {
             if(!ticking) {
                 window.requestAnimationFrame(() => {
-                    const winH = window.innerHeight;
-                    const docH = document.documentElement.scrollHeight;
-                    const scrolled = window.scrollY;
-                    const pct = docH - winH > 0 ? (scrolled / (docH - winH)) * 100 : 0;
+                    // キャッシュした値を使用
+                    const pct = cachedDocH - cachedWinH > 0 ? (window.scrollY / (cachedDocH - cachedWinH)) * 100 : 0;
                     bar.style.width = Math.min(Math.max(pct, 0), 100) + '%';
                     ticking = false;
                 });
                 ticking = true;
             }
         }, {passive:true});
-    }
-    
-    function setupSectionAnimations() {
-        if(window.innerWidth < 1024) {
-            document.querySelectorAll('.section-animate').forEach(el => el.classList.add('visible'));
-            return;
-        }
-        if('IntersectionObserver' in window) {
-            const obs = new IntersectionObserver(entries => {
-                entries.forEach(e => {
-                    if(e.isIntersecting) {
-                        e.target.classList.add('visible');
-                        obs.unobserve(e.target);
-                    }
-                });
-            }, {threshold: 0.1, rootMargin: '0px 0px -50px 0px'});
-            document.querySelectorAll('.section-animate').forEach(el => obs.observe(el));
-        } else {
-            document.querySelectorAll('.section-animate').forEach(el => el.classList.add('visible'));
-        }
     }
     
     function setupSmoothScroll() {
@@ -493,9 +492,7 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
                     const t = document.querySelector(h);
                     if(t) {
                         e.preventDefault();
-                        const off = 80;
-                        window.scrollTo({top: t.getBoundingClientRect().top + window.scrollY - off, behavior: 'smooth'});
-                        t.setAttribute('tabindex', '-1'); t.focus();
+                        window.scrollTo({top: t.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth'});
                     }
                 }
             });
@@ -504,6 +501,8 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
 
     function monitorPerf() {
         window.addEventListener('load', () => {
+            // 高さを最終更新
+            cachedDocH = document.documentElement.scrollHeight;
             setTimeout(() => {
                 const p = performance.getEntriesByType('navigation')[0];
                 if(p && typeof gtag !== 'undefined') {
@@ -522,9 +521,8 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
         window.addEventListener('scroll', () => {
             if(!tick) {
                 window.requestAnimationFrame(() => {
-                    const winH = window.innerHeight;
-                    const docH = document.documentElement.scrollHeight;
-                    const pct = Math.round((window.scrollY / (docH - winH)) * 100);
+                    // キャッシュした値を使用
+                    const pct = Math.round((window.scrollY / (cachedDocH - cachedWinH)) * 100);
                     if(pct > maxScroll) {
                         maxScroll = pct;
                         points.forEach(p => {

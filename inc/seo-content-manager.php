@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) exit;
 
 class GI_SEO_Content_Manager {
-    private $version = '30.0.0';
+    private $version = '31.0.0';
     private $table_queue;
     private $table_failed;
     private $table_merge_history;
@@ -1602,6 +1602,22 @@ class GI_SEO_Content_Manager {
                 $args['orderby'] = 'meta_value_num';
                 $args['order'] = 'DESC';
                 break;
+            case 'renovated_desc':
+                $args['meta_key'] = '_gi_renovated_at';
+                $args['orderby'] = 'meta_value';
+                $args['order'] = 'DESC';
+                if ($status !== 'renovated') {
+                    $args['meta_query'] = array(array('key' => '_gi_renovated_at', 'compare' => 'EXISTS'));
+                }
+                break;
+            case 'renovated_asc':
+                $args['meta_key'] = '_gi_renovated_at';
+                $args['orderby'] = 'meta_value';
+                $args['order'] = 'ASC';
+                if ($status !== 'renovated') {
+                    $args['meta_query'] = array(array('key' => '_gi_renovated_at', 'compare' => 'EXISTS'));
+                }
+                break;
             default:
                 $args['orderby'] = 'date';
                 $args['order'] = 'DESC';
@@ -1611,13 +1627,17 @@ class GI_SEO_Content_Manager {
         $posts = array();
 
         foreach ($query->posts as $p) {
+            $renovated_at = get_post_meta($p->ID, '_gi_renovated_at', true);
+            $renovation_count = get_post_meta($p->ID, '_gi_renovation_count', true);
             $posts[] = array(
                 'id' => $p->ID,
                 'title' => $p->post_title,
                 'date' => $p->post_date,
                 'char_count' => mb_strlen(strip_tags($p->post_content)),
                 'pv' => $this->get_post_pv($p->ID),
-                'renovated' => !empty(get_post_meta($p->ID, '_gi_renovated_at', true)),
+                'renovated' => !empty($renovated_at),
+                'renovated_at' => $renovated_at ? substr($renovated_at, 0, 10) : null,
+                'renovation_count' => (int)$renovation_count,
                 'has_report' => !empty(get_post_meta($p->ID, '_gi_renovation_report', true)),
                 'url' => get_permalink($p->ID)
             );
@@ -2596,26 +2616,90 @@ class GI_SEO_Content_Manager {
 
         $page = intval($_POST['page'] ?? 1);
         $per_page = intval($_POST['per_page'] ?? 50);
+        $sort = sanitize_text_field($_POST['sort'] ?? 'renovated_desc');
 
         $total = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_renovation_stats}");
 
-        $stats = $wpdb->get_results($wpdb->prepare(
-            "SELECT s.*, p.post_title as current_title
-             FROM {$this->table_renovation_stats} s
-             LEFT JOIN {$wpdb->posts} p ON s.post_id = p.ID
-             ORDER BY s.renovated_at DESC
-             LIMIT %d OFFSET %d",
-            $per_page, ($page - 1) * $per_page
-        ));
+        // ソート順序の決定
+        $order_sql = 's.renovated_at DESC';
+        switch ($sort) {
+            case 'renovated_asc':
+                $order_sql = 's.renovated_at ASC';
+                break;
+            case 'pv_current_desc':
+                $order_sql = 'current_pv DESC';
+                break;
+            case 'pv_current_asc':
+                $order_sql = 'current_pv ASC';
+                break;
+            case 'pv_change_desc':
+                $order_sql = 'pv_change DESC';
+                break;
+            case 'pv_change_asc':
+                $order_sql = 'pv_change ASC';
+                break;
+        }
 
-        // 現在のPVを取得
-        foreach ($stats as &$stat) {
-            $stat->current_pv = $this->get_post_pv($stat->post_id);
-            $stat->pv_change = $stat->current_pv - $stat->pv_before;
+        // PVソートの場合は一度全件取得してソートする必要がある
+        if (strpos($sort, 'pv_') === 0) {
+            $stats = $wpdb->get_results(
+                "SELECT s.*, p.post_title as current_title
+                 FROM {$this->table_renovation_stats} s
+                 LEFT JOIN {$wpdb->posts} p ON s.post_id = p.ID"
+            );
             
-            if (empty($stat->post_title) && !empty($stat->current_title)) {
-                $stat->post_title = $stat->current_title;
+            // 現在のPVを取得して配列に追加
+            foreach ($stats as &$stat) {
+                $stat->current_pv = $this->get_post_pv($stat->post_id);
+                $stat->pv_change = $stat->current_pv - $stat->pv_before;
+                
+                if (empty($stat->post_title) && !empty($stat->current_title)) {
+                    $stat->post_title = $stat->current_title;
+                }
             }
+            
+            // PHPでソート
+            usort($stats, function($a, $b) use ($sort) {
+                switch ($sort) {
+                    case 'pv_current_desc':
+                        return $b->current_pv - $a->current_pv;
+                    case 'pv_current_asc':
+                        return $a->current_pv - $b->current_pv;
+                    case 'pv_change_desc':
+                        return $b->pv_change - $a->pv_change;
+                    case 'pv_change_asc':
+                        return $a->pv_change - $b->pv_change;
+                    default:
+                        return 0;
+                }
+            });
+            
+            // ページネーション
+            $stats = array_slice($stats, ($page - 1) * $per_page, $per_page);
+        } else {
+            $stats = $wpdb->get_results($wpdb->prepare(
+                "SELECT s.*, p.post_title as current_title
+                 FROM {$this->table_renovation_stats} s
+                 LEFT JOIN {$wpdb->posts} p ON s.post_id = p.ID
+                 ORDER BY {$order_sql}
+                 LIMIT %d OFFSET %d",
+                $per_page, ($page - 1) * $per_page
+            ));
+
+            // 現在のPVを取得
+            foreach ($stats as &$stat) {
+                $stat->current_pv = $this->get_post_pv($stat->post_id);
+                $stat->pv_change = $stat->current_pv - $stat->pv_before;
+                
+                if (empty($stat->post_title) && !empty($stat->current_title)) {
+                    $stat->post_title = $stat->current_title;
+                }
+            }
+        }
+
+        // 実際のURLを追加
+        foreach ($stats as &$stat) {
+            $stat->url = get_permalink($stat->post_id);
         }
 
         wp_send_json_success(array(
@@ -3222,13 +3306,28 @@ class GI_SEO_Content_Manager {
         check_ajax_referer('gi_seo_nonce', 'nonce');
         global $wpdb;
 
-        $limit = intval($_POST['limit'] ?? 100);
+        // タイムアウト回避のため処理件数を調整
+        $limit = intval($_POST['limit'] ?? 30);
         $offset = intval($_POST['offset'] ?? 0);
-
-        $subsidies = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$this->table_subsidy} WHERE matched_post_id IS NULL LIMIT %d OFFSET %d",
-            $limit, $offset
-        ));
+        $skip_matched = isset($_POST['skip_matched']) ? $_POST['skip_matched'] === 'true' : true;
+        
+        // 実行時間制限を設定
+        set_time_limit(120);
+        
+        // 照合対象を取得（すでにマッチ済みを除外するオプション）
+        if ($skip_matched) {
+            $subsidies = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM {$this->table_subsidy} WHERE matched_post_id IS NULL ORDER BY id ASC LIMIT %d OFFSET %d",
+                $limit, $offset
+            ));
+            $total_remaining = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
+        } else {
+            $subsidies = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM {$this->table_subsidy} ORDER BY id ASC LIMIT %d OFFSET %d",
+                $limit, $offset
+            ));
+            $total_remaining = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}") - $offset;
+        }
 
         $processed = 0;
         $matched = 0;
@@ -3236,6 +3335,12 @@ class GI_SEO_Content_Manager {
 
         foreach ($subsidies as $subsidy) {
             $processed++;
+            
+            // メモリ使用量チェック
+            if (memory_get_usage(true) > 128 * 1024 * 1024) {
+                break; // 128MB超えたら中断
+            }
+            
             $match = $this->find_matching_post_for_subsidy($subsidy->title, $subsidy->prefecture);
 
             if ($match) {
@@ -3251,16 +3356,22 @@ class GI_SEO_Content_Manager {
                     'score' => $match['score']
                 );
             }
+            
+            // 少し待機してサーバー負荷を軽減
+            usleep(10000); // 10ms
         }
 
-        $remaining = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
+        $remaining = $skip_matched 
+            ? $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL")
+            : max(0, $total_remaining - $processed);
 
         wp_send_json_success(array(
             'processed' => $processed,
             'matched' => $matched,
             'remaining' => (int)$remaining,
-            'has_more' => count($subsidies) === $limit,
-            'results' => array_slice($results, 0, 20)
+            'has_more' => $processed > 0 && (int)$remaining > 0,
+            'results' => array_slice($results, 0, 20),
+            'next_offset' => $offset + $processed
         ));
     }
 
@@ -3467,9 +3578,11 @@ class GI_SEO_Content_Manager {
                         <option value="not_renovated">未処理</option>
                     </select>
                     <select class="gi-select" id="filter-sort">
-                        <option value="date_desc">日付降順</option>
-                        <option value="date_asc">日付昇順</option>
-                        <option value="pv_desc">PV降順</option>
+                        <option value="date_desc">投稿日（新しい順）</option>
+                        <option value="date_asc">投稿日（古い順）</option>
+                        <option value="pv_desc">PV（多い順）</option>
+                        <option value="renovated_desc">リノベ日（新しい順）</option>
+                        <option value="renovated_asc">リノベ日（古い順）</option>
                     </select>
                     <select class="gi-select" id="per-page">
                         <option value="100">100件</option>
@@ -3490,12 +3603,13 @@ class GI_SEO_Content_Manager {
                             <th>タイトル</th>
                             <th width="80">文字数</th>
                             <th width="60">PV</th>
+                            <th width="90">リノベ日</th>
                             <th width="80">状態</th>
                             <th width="200">操作</th>
                         </tr>
                     </thead>
                     <tbody id="posts-tbody">
-                        <tr><td colspan="6" style="text-align:center;padding:30px;">読み込み中...</td></tr>
+                        <tr><td colspan="7" style="text-align:center;padding:30px;">読み込み中...</td></tr>
                     </tbody>
                 </table>
                 <div id="pagination" style="margin-top:15px;"></div>
@@ -3613,17 +3727,21 @@ class GI_SEO_Content_Manager {
                     if(r.success){
                         var html = '';
                         if(r.data.posts.length === 0){
-                            html = '<tr><td colspan="6" style="text-align:center;padding:30px;">なし</td></tr>';
+                            html = '<tr><td colspan="7" style="text-align:center;padding:30px;">なし</td></tr>';
                         } else {
                             r.data.posts.forEach(function(p){
                                 var badge = p.has_report ? '<span class="gi-badge gi-badge-done">カルテ有</span>' : 
                                            (p.renovated ? '<span class="gi-badge gi-badge-done">済</span>' : 
                                            '<span class="gi-badge gi-badge-pending">未</span>');
+                                var renovateInfo = p.renovated_at ? p.renovated_at : '-';
+                                if(p.renovation_count > 1) renovateInfo += ' <small>('+p.renovation_count+'回)</small>';
+                                
                                 html += '<tr data-id="'+p.id+'">';
                                 html += '<td><input type="checkbox" class="post-check" value="'+p.id+'" data-renovated="'+(p.renovated?'1':'0')+'"></td>';
                                 html += '<td><a href="'+p.url+'" target="_blank">'+p.title+'</a></td>';
                                 html += '<td>'+p.char_count.toLocaleString()+'</td>';
                                 html += '<td>'+p.pv+'</td>';
+                                html += '<td>'+renovateInfo+'</td>';
                                 html += '<td>'+badge+'</td>';
                                 html += '<td>';
                                 html += '<button class="gi-btn btn-report" data-id="'+p.id+'" '+(p.has_report?'':'disabled')+' style="padding:4px 8px;font-size:12px;">カルテ</button> ';
@@ -4650,15 +4768,29 @@ class GI_SEO_Content_Manager {
             <div class="gi-card">
                 <h3>リノベーション統計</h3>
                 <p style="color:#666;font-size:13px;">リノベーション実施前後のPV変化を確認できます。</p>
+                
+                <div style="margin-bottom:15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                    <label style="font-weight:600;">並び替え:</label>
+                    <select class="gi-select" id="pv-sort">
+                        <option value="renovated_desc">リノベーション日（新しい順）</option>
+                        <option value="renovated_asc">リノベーション日（古い順）</option>
+                        <option value="pv_current_desc">現在のPV（多い順）</option>
+                        <option value="pv_current_asc">現在のPV（少ない順）</option>
+                        <option value="pv_change_desc">PV変化（増加順）</option>
+                        <option value="pv_change_asc">PV変化（減少順）</option>
+                    </select>
+                    <button class="gi-btn" id="btn-pv-reload">🔄 更新</button>
+                </div>
+                
                 <table class="gi-table">
                     <thead>
                         <tr>
                             <th>タイトル</th>
-                            <th width="100">実施日</th>
+                            <th width="100" style="cursor:pointer" class="sortable" data-sort="renovated">実施日 ▼</th>
                             <th width="80">文字数変化</th>
                             <th width="80">PV(実施前)</th>
-                            <th width="80">PV(現在)</th>
-                            <th width="80">変化</th>
+                            <th width="80" style="cursor:pointer" class="sortable" data-sort="pv_current">PV(現在) ▼</th>
+                            <th width="80" style="cursor:pointer" class="sortable" data-sort="pv_change">変化 ▼</th>
                             <th width="80">操作</th>
                         </tr>
                     </thead>
@@ -4688,10 +4820,14 @@ class GI_SEO_Content_Manager {
         jQuery(function($){
             var nonce = '<?php echo $nonce; ?>';
             var currentPage = 1;
+            var currentSort = 'renovated_desc';
 
-            function loadStats(page) {
+            function loadStats(page, sort) {
                 currentPage = page || 1;
-                $.post(ajaxurl, {action:'gi_seo_get_renovation_stats',nonce:nonce,page:currentPage,per_page:50}, function(r){
+                currentSort = sort || currentSort;
+                $('#pv-stats-tbody').html('<tr><td colspan="7" style="text-align:center;padding:30px;">読み込み中...</td></tr>');
+                
+                $.post(ajaxurl, {action:'gi_seo_get_renovation_stats',nonce:nonce,page:currentPage,per_page:50,sort:currentSort}, function(r){
                     if(r.success){
                         if(r.data.stats.length === 0){
                             $('#pv-stats-tbody').html('<tr><td colspan="7" style="text-align:center;">データなし</td></tr>');
@@ -4703,9 +4839,10 @@ class GI_SEO_Content_Manager {
                             var pvDiff = stat.pv_change;
                             var pvClass = pvDiff >= 0 ? 'gi-pv-up' : 'gi-pv-down';
                             var pvSign = pvDiff >= 0 ? '+' : '';
+                            var url = stat.url || '/?p='+stat.post_id;
                             
                             html += '<tr>';
-                            html += '<td><a href="/?p='+stat.post_id+'" target="_blank">'+stat.post_title+'</a></td>';
+                            html += '<td><a href="'+url+'" target="_blank">'+stat.post_title+'</a></td>';
                             html += '<td>'+(stat.renovated_at ? stat.renovated_at.substring(0,10) : '-')+'</td>';
                             html += '<td>'+stat.original_char_count+' → '+stat.new_char_count+'</td>';
                             html += '<td>'+stat.pv_before+'</td>';
@@ -4727,7 +4864,11 @@ class GI_SEO_Content_Manager {
 
             loadStats();
 
-            $(document).on('click', '.pv-stats-page', function(){ loadStats($(this).data('page')); });
+            // ソート変更
+            $('#pv-sort').change(function(){ loadStats(1, $(this).val()); });
+            $('#btn-pv-reload').click(function(){ loadStats(currentPage, currentSort); });
+            
+            $(document).on('click', '.pv-stats-page', function(){ loadStats($(this).data('page'), currentSort); });
 
             $(document).on('click', '.btn-show-chart', function(){
                 var id = $(this).data('id');
@@ -4947,7 +5088,8 @@ class GI_SEO_Content_Manager {
             <div class="gi-card">
                 <h3>🔗 投稿照合</h3>
                 <p style="color:#666;font-size:13px;">補助金DBと投稿記事を照合し、すでに記事化されているかを自動判定します。</p>
-                <div style="margin-bottom:15px;">
+                <div style="margin-bottom:15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                    <label><input type="checkbox" id="skip-matched" checked> 既に登録済みのものを除外</label>
                     <button class="gi-btn gi-btn-success" id="btn-sync-posts">🔄 投稿と照合開始</button>
                     <button class="gi-btn" id="btn-stop-sync" style="display:none;">停止</button>
                 </div>
@@ -5233,11 +5375,19 @@ class GI_SEO_Content_Manager {
                 $('#sync-progress-container').show();
                 
                 var offset = 0, totalMatched = 0, totalProcessed = 0;
+                var skipMatched = $('#skip-matched').is(':checked');
+                var batchSize = 30; // 処理件数を減らして高速化
                 
                 function batch() {
                     if(!syncing) { finish(); return; }
                     
-                    $.post(ajaxurl, {action:'gi_subsidy_sync_posts',nonce:nonce,limit:50,offset:offset}, function(r){
+                    $.post(ajaxurl, {
+                        action:'gi_subsidy_sync_posts',
+                        nonce:nonce,
+                        limit:batchSize,
+                        offset:skipMatched ? 0 : offset, // skip_matched=trueの場合はoffsetを使わない
+                        skip_matched: skipMatched ? 'true' : 'false'
+                    }, function(r){
                         if(r.success){
                             totalProcessed += r.data.processed;
                             totalMatched += r.data.matched;
@@ -5249,17 +5399,24 @@ class GI_SEO_Content_Manager {
                             $('#sync-progress-bar').css('width', progress + '%');
                             $('#sync-progress-text').text('処理: ' + totalProcessed + '件 / マッチ: ' + totalMatched + '件 / 残り: ' + remaining + '件');
                             
-                            loadStats();
+                            // 定期的に統計を更新（負荷軽減のため5回に1回）
+                            if(totalProcessed % (batchSize * 5) === 0) {
+                                loadStats();
+                            }
                             
                             if(r.data.has_more && syncing){
-                                offset += 50;
-                                setTimeout(batch, 300);
+                                offset = r.data.next_offset || (offset + batchSize);
+                                setTimeout(batch, 200); // 待機時間を短縮
                             } else {
                                 finish();
                             }
                         } else {
+                            alert('エラーが発生しました。しばらく待ってから再試行してください。');
                             finish();
                         }
+                    }).fail(function(){
+                        alert('通信エラーが発生しました。');
+                        finish();
                     });
                 }
                 
@@ -5268,6 +5425,7 @@ class GI_SEO_Content_Manager {
                     $('#btn-sync-posts').prop('disabled', false);
                     $('#btn-stop-sync').hide();
                     $('#sync-progress-text').text('完了: ' + totalProcessed + '件処理、' + totalMatched + '件マッチ');
+                    loadStats();
                     loadSubsidies(currentPage);
                 }
                 
@@ -5549,12 +5707,28 @@ class GI_SEO_Content_Manager {
                 </div>
 
                 <div class="gi-card">
-                    <h3>📄 カスタムプロンプト</h3>
-                    <div class="gi-form-desc" style="margin-bottom:10px;">
-                        空欄の場合はデフォルトプロンプトが使用されます。<br>
-                        使用可能な変数: {title}, {content}, {seed_keyword}, {keyphrase}, {keywords}, {suggests}, {related_posts}
+                    <h3>📄 AIリノベーション・カスタムプロンプト</h3>
+                    <div class="gi-form-desc" style="margin-bottom:15px; padding:15px; background:#f5f5f5; border-radius:4px;">
+                        <p style="margin:0 0 10px 0;"><strong>空欄の場合はデフォルトプロンプトが使用されます。</strong></p>
+                        <p style="margin:0 0 10px 0;">使用可能な変数（プロンプト内で自動的に置換されます）:</p>
+                        <ul style="margin:0;padding-left:20px;font-size:12px;">
+                            <li><code>{title}</code> - 記事タイトル</li>
+                            <li><code>{content}</code> - 記事本文（HTML）</li>
+                            <li><code>{seed_keyword}</code> - 抽出されたシードキーワード</li>
+                            <li><code>{keyphrase}</code> - 抽出されたキーフレーズ</li>
+                            <li><code>{keywords}</code> - 重要キーワードリスト（カンマ区切り）</li>
+                            <li><code>{suggests}</code> - Googleサジェストキーワード（カンマ区切り）</li>
+                            <li><code>{related_posts}</code> - 関連記事リスト</li>
+                        </ul>
                     </div>
-                    <textarea class="gi-textarea" name="custom_prompt"><?php echo esc_textarea($settings['custom_prompt'] ?? ''); ?></textarea>
+                    <div style="margin-bottom:10px;">
+                        <button type="button" class="gi-btn" id="btn-load-default-prompt">📋 デフォルトプロンプトを読み込む</button>
+                        <button type="button" class="gi-btn" id="btn-clear-prompt">🗑 クリア</button>
+                    </div>
+                    <textarea class="gi-textarea" name="custom_prompt" style="height:400px;font-size:12px;line-height:1.5;"><?php echo esc_textarea($settings['custom_prompt'] ?? ''); ?></textarea>
+                    <div class="gi-form-desc" style="margin-top:10px;">
+                        ヒント: プロンプトの最初に「【絶対厳守ルール】」を入れると、AIの出力フォーマットを制御しやすくなります。
+                    </div>
                 </div>
 
                 <button type="submit" class="gi-btn gi-btn-primary">💾 設定を保存</button>
@@ -5594,6 +5768,77 @@ class GI_SEO_Content_Manager {
         <script>
         jQuery(function($){
             var nonce = '<?php echo $nonce; ?>';
+            
+            // デフォルトプロンプト
+            var defaultPrompt = `以下の記事をリノベーションしてください。
+
+【絶対厳守ルール】
+- 前置き・挨拶・説明文は一切不要
+- 「承知しました」「SEOの専門家として」などの文言は絶対に含めない
+- HTMLコードのみを出力する
+- 出力の最初の文字は必ず「<」で始める
+- 内部リンクは地域やテーマが一致する場合のみ設置する
+
+## 対象記事
+タイトル: {title}
+
+本文:
+{content}
+
+## キーワード
+- シード: {seed_keyword}
+- キーフレーズ: {keyphrase}
+- 重要語: {keywords}
+
+## Googleサジェスト（必ず網羅）
+{suggests}
+
+## 内部リンク設置（地域・キーワードが一致する記事のみ）
+{related_posts}
+
+## デザインルール
+シンプルな白黒ベースのHTMLで出力。以下のスタイルを使用：
+
+**ポイントボックス**
+<div style="background:#f5f5f5; border:1px solid #333; padding:20px; margin:20px 0;">
+<h4 style="margin:0 0 10px 0; color:#333;">■ ポイント</h4>
+<p style="margin:0;">内容</p>
+</div>
+
+**注意ボックス**
+<div style="background:#fff; border-left:4px solid #333; padding:15px; margin:20px 0;">
+<strong>注意：</strong>内容
+</div>
+
+**テーブル**
+<table style="width:100%; border-collapse:collapse; margin:20px 0;">
+<tr style="background:#333; color:#fff;"><th style="padding:10px; border:1px solid #333;">項目</th><th style="padding:10px; border:1px solid #333;">内容</th></tr>
+<tr><td style="padding:10px; border:1px solid #ddd;">項目名</td><td style="padding:10px; border:1px solid #ddd;">内容</td></tr>
+</table>
+
+**Q&A**
+<div style="margin:20px 0;">
+<div style="background:#333; color:#fff; padding:10px 15px;">Q. 質問</div>
+<div style="background:#f5f5f5; padding:15px; border:1px solid #ddd; border-top:none;">A. 回答</div>
+</div>
+
+## 出力形式（厳守）
+<!-- META_DESCRIPTION: 120文字以内の要約 -->
+<!-- TITLE: 改善後タイトル（必要な場合） -->
+<h2>最初の見出し</h2>
+（以降HTMLコード本文）`;
+            
+            $('#btn-load-default-prompt').click(function(){
+                if($('textarea[name="custom_prompt"]').val().trim() !== '') {
+                    if(!confirm('現在のプロンプトを上書きしますか？')) return;
+                }
+                $('textarea[name="custom_prompt"]').val(defaultPrompt);
+            });
+            
+            $('#btn-clear-prompt').click(function(){
+                if(!confirm('プロンプトをクリアしますか？（デフォルトプロンプトが使用されます）')) return;
+                $('textarea[name="custom_prompt"]').val('');
+            });
             
             $('#settings-form').submit(function(e){
                 e.preventDefault();
