@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) exit;
 
 class GI_SEO_Content_Manager {
-    private $version = '31.3.0';
+    private $version = '31.4.0';
     private $table_queue;
     private $table_failed;
     private $table_merge_history;
@@ -3199,12 +3199,56 @@ class GI_SEO_Content_Manager {
         check_ajax_referer('gi_seo_nonce', 'nonce');
         global $wpdb;
 
-        $items = $wpdb->get_results("SELECT * FROM {$this->table_subsidy} ORDER BY created_at DESC");
+        // フィルター条件を取得
+        $search = sanitize_text_field($_POST['search'] ?? '');
+        $prefecture = sanitize_text_field($_POST['prefecture'] ?? '');
+        $status = sanitize_text_field($_POST['status'] ?? '');
+        $exists_filter = sanitize_text_field($_POST['exists_filter'] ?? '');
+        
+        // クエリ構築
+        $where = array('1=1');
+        $params = array();
+        
+        if (!empty($search)) {
+            $where[] = "(title LIKE %s OR notes LIKE %s)";
+            $params[] = '%' . $wpdb->esc_like($search) . '%';
+            $params[] = '%' . $wpdb->esc_like($search) . '%';
+        }
+        
+        if (!empty($prefecture)) {
+            $where[] = "prefecture = %s";
+            $params[] = $prefecture;
+        }
+        
+        if (!empty($status)) {
+            $where[] = "status = %s";
+            $params[] = $status;
+        }
+        
+        if ($exists_filter === 'exists') {
+            $where[] = "matched_post_id IS NOT NULL";
+        } elseif ($exists_filter === 'not_exists') {
+            $where[] = "matched_post_id IS NULL";
+        }
+        
+        $where_clause = implode(' AND ', $where);
+        $sql = "SELECT * FROM {$this->table_subsidy} WHERE {$where_clause} ORDER BY created_at DESC";
+        
+        if (!empty($params)) {
+            $sql = $wpdb->prepare($sql, $params);
+        }
+        
+        $items = $wpdb->get_results($sql);
 
         $csv_data = array();
-        $csv_data[] = array('タイトル', 'URL', '締切日', '都道府県', '市区町村', '補助金額', 'ステータス', 'データソース', 'メモ', '投稿ID', '作成日時', '更新日時');
+        $csv_data[] = array('タイトル', 'URL', '締切日', '都道府県', '市区町村', '補助金額', 'ステータス', 'データソース', 'メモ', '投稿ID', 'マッチ投稿タイトル', '作成日時', '更新日時');
 
         foreach ($items as $item) {
+            $matched_title = '';
+            if ($item->matched_post_id) {
+                $matched_title = get_the_title($item->matched_post_id);
+            }
+            
             $csv_data[] = array(
                 $item->title,
                 $item->url,
@@ -3215,15 +3259,25 @@ class GI_SEO_Content_Manager {
                 $item->status,
                 $item->data_source,
                 $item->notes,
-                $item->matched_post_id,
+                $item->matched_post_id ?: '',
+                $matched_title,
                 $item->created_at,
                 $item->updated_at
             );
         }
 
+        // フィルター情報も返す
+        $filter_info = array();
+        if (!empty($search)) $filter_info[] = "検索: {$search}";
+        if (!empty($prefecture)) $filter_info[] = "都道府県: {$prefecture}";
+        if (!empty($status)) $filter_info[] = "ステータス: {$status}";
+        if ($exists_filter === 'exists') $filter_info[] = "投稿あり";
+        if ($exists_filter === 'not_exists') $filter_info[] = "投稿なし";
+
         wp_send_json_success(array(
             'data' => $csv_data,
-            'count' => count($items)
+            'count' => count($items) - 1, // ヘッダー除く
+            'filter_info' => !empty($filter_info) ? implode(' / ', $filter_info) : '全件'
         ));
     }
 
@@ -5999,7 +6053,22 @@ class GI_SEO_Content_Manager {
             });
 
             $('#btn-subsidy-export').click(function(){
-                $.post(ajaxurl, {action:'gi_subsidy_export',nonce:nonce}, function(r){
+                // 現在のフィルター条件を取得
+                var exportData = {
+                    action: 'gi_subsidy_export',
+                    nonce: nonce,
+                    search: $('#subsidy-search').val(),
+                    prefecture: $('#subsidy-prefecture').val(),
+                    status: $('#subsidy-status-filter').val(),
+                    exists_filter: $('#subsidy-exists-filter').val()
+                };
+                
+                var btn = $(this);
+                btn.prop('disabled', true).text('エクスポート中...');
+                
+                $.post(ajaxurl, exportData, function(r){
+                    btn.prop('disabled', false).text('📤 エクスポート');
+                    
                     if(r.success){
                         var tsv = '';
                         r.data.data.forEach(function(row){
@@ -6011,11 +6080,25 @@ class GI_SEO_Content_Manager {
                         var blob = new Blob([new Uint8Array([0xEF,0xBB,0xBF]), tsv], {type:'text/tab-separated-values'});
                         var a = document.createElement('a');
                         a.href = URL.createObjectURL(blob);
-                        a.download = 'subsidy_db_'+new Date().toISOString().slice(0,10)+'.tsv';
+                        
+                        // ファイル名にフィルター情報を含める
+                        var filename = 'subsidy_db_' + new Date().toISOString().slice(0,10);
+                        if($('#subsidy-exists-filter').val() === 'not_exists') filename += '_記事なし';
+                        if($('#subsidy-exists-filter').val() === 'exists') filename += '_記事あり';
+                        if($('#subsidy-status-filter').val()) filename += '_' + $('#subsidy-status-filter').val();
+                        if($('#subsidy-prefecture').val()) filename += '_' + $('#subsidy-prefecture').val();
+                        filename += '.tsv';
+                        
+                        a.download = filename;
                         a.click();
                         
-                        alert(r.data.count + '件エクスポートしました（TSV形式）');
+                        alert('エクスポート完了\n\n' + r.data.count + '件\nフィルター: ' + r.data.filter_info);
+                    } else {
+                        alert('エラー: ' + r.data);
                     }
+                }).fail(function(){
+                    btn.prop('disabled', false).text('📤 エクスポート');
+                    alert('通信エラーが発生しました');
                 });
             });
 
