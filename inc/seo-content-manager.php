@@ -3514,7 +3514,6 @@ class GI_SEO_Content_Manager {
                     'match_type' => $match_type,
                     'matched_name' => $name
                 );
-                }
             }
             
             // 十分な候補が見つかったら終了
