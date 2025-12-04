@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) exit;
 
 class GI_SEO_Content_Manager {
-    private $version = '31.2.0';
+    private $version = '31.3.0';
     private $table_queue;
     private $table_failed;
     private $table_merge_history;
@@ -93,6 +93,7 @@ class GI_SEO_Content_Manager {
         add_action('wp_ajax_gi_subsidy_check_exists', array($this, 'ajax_subsidy_check_exists'));
         add_action('wp_ajax_gi_subsidy_sync_posts', array($this, 'ajax_subsidy_sync_posts'));
         add_action('wp_ajax_gi_subsidy_debug_match', array($this, 'ajax_subsidy_debug_match'));
+        add_action('wp_ajax_gi_subsidy_reset_matches', array($this, 'ajax_subsidy_reset_matches'));
 
         // PV計測（post_metaを使用）
         add_action('wp_ajax_gi_track_pv', array($this, 'ajax_track_pv'));
@@ -3457,6 +3458,41 @@ class GI_SEO_Content_Manager {
             'unmatched_subsidies' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL")
         ));
     }
+    
+    /**
+     * マッチ情報をリセット（再スキャン用）
+     */
+    public function ajax_subsidy_reset_matches() {
+        check_ajax_referer('gi_seo_nonce', 'nonce');
+        global $wpdb;
+        
+        $mode = sanitize_text_field($_POST['mode'] ?? 'all');
+        $ids = isset($_POST['ids']) ? array_map('intval', (array)$_POST['ids']) : array();
+        
+        if ($mode === 'all') {
+            // 全マッチをリセット
+            $updated = $wpdb->query(
+                "UPDATE {$this->table_subsidy} SET matched_post_id = NULL, match_type = NULL WHERE matched_post_id IS NOT NULL"
+            );
+            wp_send_json_success(array(
+                'message' => $updated . '件のマッチ情報をリセットしました',
+                'count' => $updated
+            ));
+        } elseif ($mode === 'selected' && !empty($ids)) {
+            // 選択した補助金のみリセット
+            $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+            $updated = $wpdb->query($wpdb->prepare(
+                "UPDATE {$this->table_subsidy} SET matched_post_id = NULL, match_type = NULL WHERE id IN ($placeholders)",
+                $ids
+            ));
+            wp_send_json_success(array(
+                'message' => $updated . '件のマッチ情報をリセットしました',
+                'count' => $updated
+            ));
+        } else {
+            wp_send_json_error('リセット対象を指定してください');
+        }
+    }
 
     private function find_matching_post_for_subsidy($subsidy_title, $prefecture = '') {
         global $wpdb;
@@ -3533,63 +3569,117 @@ class GI_SEO_Content_Manager {
     }
     
     /**
-     * 補助金タイトルから全ての補助金名を抽出
-     * 例: 「令和6年度 小規模事業者持続化補助金（一般型）」
-     *     → 「小規模事業者持続化補助金」「持続化補助金」
+     * 補助金タイトルから全ての補助金名・事業名を抽出
+     * 
+     * 対応パターン:
+     * - 住宅リフォーム工事費補助金
+     * - 高齢者のインフルエンザ予防接種費助成事業
+     * - 熊本県美里町：「美里町土地改良事業」
+     * - 福岡県中小企業IT導入・賃上げ緊急支援補助金
      */
     private function extract_all_subsidy_names($title) {
         $names = array();
         
-        // パターン1: 〇〇補助金、〇〇助成金など（最も重要）
-        $suffix_patterns = array('補助金', '助成金', '支援金', '給付金', '交付金', '奨励金', '支援事業', '補助事業');
-        foreach ($suffix_patterns as $suffix) {
-            // 全体マッチ（例：小規模事業者持続化補助金）
-            if (preg_match('/([ぁ-んァ-ヶー一-龥a-zA-Z0-9]{2,20}' . $suffix . ')/', $title, $m)) {
-                $name = $m[1];
-                // 年度や記号を除去
-                $name = preg_replace('/^(令和|平成|R|H)?\d+年度?\s*/', '', $name);
-                if (mb_strlen($name) >= 4) {
+        // 前処理：都道府県名・市区町村名を除去してコア部分を取得
+        $clean_title = $title;
+        $clean_title = preg_replace('/^(北海道|東京都|大阪府|京都府|.{2,3}県).{1,5}(市|町|村|区)?[：:]?\s*/', '', $clean_title);
+        $clean_title = preg_replace('/^(令和|平成|R|H)?\d+年度?\s*/', '', $clean_title);
+        $clean_title = preg_replace('/[（(][^）)]*[）)]/', '', $clean_title); // 括弧内を除去
+        $clean_title = trim($clean_title);
+        
+        // パターン1: 〇〇補助金、〇〇助成金、〇〇事業など（最重要）
+        $suffixes = array(
+            '補助金', '助成金', '支援金', '給付金', '交付金', '奨励金',
+            '助成事業', '支援事業', '補助事業', '推進事業', '促進事業',
+            '事業'  // 最後に広いパターン
+        );
+        
+        foreach ($suffixes as $suffix) {
+            // タイトル全体から検索
+            if (preg_match('/([ぁ-んァ-ヶー一-龥a-zA-Z0-9・]{3,30}' . preg_quote($suffix, '/') . ')/', $clean_title, $m)) {
+                $name = trim($m[1]);
+                if (mb_strlen($name) >= 5 && !in_array($name, $names)) {
+                    $names[] = $name;
+                }
+            }
+            // 元タイトルからも検索
+            if (preg_match('/([ぁ-んァ-ヶー一-龥a-zA-Z0-9・]{3,30}' . preg_quote($suffix, '/') . ')/', $title, $m)) {
+                $name = trim($m[1]);
+                if (mb_strlen($name) >= 5 && !in_array($name, $names)) {
                     $names[] = $name;
                 }
             }
         }
         
         // パターン2: 「」内のテキスト
-        if (preg_match_all('/「([^」]{3,30})」/', $title, $matches)) {
+        if (preg_match_all('/「([^」]{3,50})」/', $title, $matches)) {
             foreach ($matches[1] as $m) {
                 $m = trim($m);
-                if (mb_strlen($m) >= 3) {
+                $m = preg_replace('/^(令和|平成|R|H)?\d+年度?\s*/', '', $m);
+                if (mb_strlen($m) >= 4 && !in_array($m, $names)) {
                     $names[] = $m;
                 }
             }
         }
         
         // パターン3: 【】内のテキスト（都道府県以外）
-        if (preg_match_all('/【([^】]{3,30})】/', $title, $matches)) {
+        if (preg_match_all('/【([^】]{3,50})】/', $title, $matches)) {
             foreach ($matches[1] as $m) {
                 $m = trim($m);
-                // 都道府県名だけの場合はスキップ
-                if (!preg_match('/^(北海道|東京都|大阪府|京都府|.{2,3}県)$/', $m) && mb_strlen($m) >= 3) {
-                    $names[] = $m;
+                if (!preg_match('/^(北海道|東京都|大阪府|京都府|.{2,3}県|.{1,4}市|.{1,4}町|.{1,4}村)$/', $m)) {
+                    if (mb_strlen($m) >= 4 && !in_array($m, $names)) {
+                        $names[] = $m;
+                    }
                 }
             }
         }
         
-        // パターン4: 省略名の展開（持続化補助金 → 小規模事業者持続化補助金）
-        $abbreviations = array(
-            '持続化補助金' => '小規模事業者持続化補助金',
-            'ものづくり補助金' => 'ものづくり・商業・サービス生産性向上促進補助金',
-            '事業再構築補助金' => '事業再構築補助金',
-            'IT導入補助金' => 'IT導入補助金',
+        // パターン4: キーワードベースの検索用語を追加
+        $keywords = array();
+        
+        // IT導入、リフォーム、インフルエンザなど特徴的なキーワード
+        $important_words = array(
+            'IT導入', 'リフォーム', '省エネ', '脱炭素', 'クリーンエネルギー',
+            'インフルエンザ', '予防接種', '住宅', '空家', '解体',
+            '創業', '起業', '事業承継', '販路開拓', '生産性向上',
+            '人材育成', '雇用', '賃上げ', 'DX', 'デジタル',
+            '移住', 'UIターン', '定住', '子育て', '保育',
+            '農業', '漁業', '林業', '土地改良', '設備導入'
         );
-        foreach ($abbreviations as $short => $full) {
-            if (mb_stripos($title, $short) !== false) {
-                $names[] = $short;
-                $names[] = $full;
+        
+        foreach ($important_words as $word) {
+            if (mb_stripos($title, $word) !== false) {
+                $keywords[] = $word;
             }
         }
         
-        // 重複除去して返す
+        // パターン5: 省略名・通称の展開
+        $abbreviations = array(
+            '持続化補助金' => array('持続化補助金', '小規模事業者持続化補助金'),
+            'ものづくり補助金' => array('ものづくり補助金', 'ものづくり・商業・サービス'),
+            '事業再構築' => array('事業再構築補助金', '事業再構築'),
+            'IT導入補助金' => array('IT導入補助金', 'IT導入'),
+        );
+        
+        foreach ($abbreviations as $key => $variants) {
+            if (mb_stripos($title, $key) !== false) {
+                foreach ($variants as $v) {
+                    if (!in_array($v, $names)) {
+                        $names[] = $v;
+                    }
+                }
+            }
+        }
+        
+        // キーワードも追加（名前が少ない場合）
+        if (count($names) < 3) {
+            foreach ($keywords as $kw) {
+                if (!in_array($kw, $names)) {
+                    $names[] = $kw;
+                }
+            }
+        }
+        
         return array_unique(array_filter($names));
     }
     
@@ -5269,6 +5359,13 @@ class GI_SEO_Content_Manager {
                 </div>
                 <div id="sync-progress-text" style="font-size:12px;color:#666;"></div>
                 <div id="debug-output" style="display:none; margin-top:15px; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px; max-height:400px; overflow:auto; font-size:12px;"></div>
+                
+                <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
+                    <strong>再スキャン:</strong>
+                    <button class="gi-btn gi-btn-sm" id="btn-reset-all-matches" style="margin-left:10px;">🔄 全マッチをリセット</button>
+                    <button class="gi-btn gi-btn-sm" id="btn-reset-selected-matches">🔄 選択をリセット</button>
+                    <span style="color:#666;font-size:12px;margin-left:10px;">※リセット後に再照合すると、新しいロジックで再スキャンされます</span>
+                </div>
             </div>
 
             <div class="gi-card">
@@ -5715,9 +5812,56 @@ class GI_SEO_Content_Manager {
                         if(r.data.found){
                             alert('マッチ発見！\n\n→ ' + r.data.post_title + '\nスコア: ' + r.data.score);
                             loadSubsidies(currentPage);
+                            loadStats();
                         } else {
                             alert('マッチする投稿が見つかりませんでした');
                         }
+                    } else {
+                        alert('エラー: ' + r.data);
+                    }
+                });
+            });
+            
+            // 全マッチリセット
+            $('#btn-reset-all-matches').click(function(){
+                if(!confirm('全ての補助金のマッチ情報をリセットしますか？\n再照合で新しいロジックで再スキャンできます。')) return;
+                
+                var btn = $(this);
+                btn.prop('disabled', true).text('リセット中...');
+                
+                $.post(ajaxurl, {action:'gi_subsidy_reset_matches', nonce:nonce, mode:'all'}, function(r){
+                    btn.prop('disabled', false).text('🔄 全マッチをリセット');
+                    if(r.success){
+                        alert(r.data.message);
+                        loadStats();
+                        loadSubsidies(currentPage);
+                    } else {
+                        alert('エラー: ' + r.data);
+                    }
+                });
+            });
+            
+            // 選択リセット
+            $('#btn-reset-selected-matches').click(function(){
+                var ids = [];
+                $('.subsidy-check:checked').each(function(){ ids.push($(this).val()); });
+                
+                if(ids.length === 0){
+                    alert('リセット対象を選択してください');
+                    return;
+                }
+                
+                if(!confirm(ids.length + '件のマッチ情報をリセットしますか？')) return;
+                
+                var btn = $(this);
+                btn.prop('disabled', true).text('リセット中...');
+                
+                $.post(ajaxurl, {action:'gi_subsidy_reset_matches', nonce:nonce, mode:'selected', ids:ids}, function(r){
+                    btn.prop('disabled', false).text('🔄 選択をリセット');
+                    if(r.success){
+                        alert(r.data.message);
+                        loadStats();
+                        loadSubsidies(currentPage);
                     } else {
                         alert('エラー: ' + r.data);
                     }
