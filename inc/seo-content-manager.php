@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) exit;
 
 class GI_SEO_Content_Manager {
-    private $version = '31.0.0';
+    private $version = '31.1.0';
     private $table_queue;
     private $table_failed;
     private $table_merge_history;
@@ -3306,39 +3306,53 @@ class GI_SEO_Content_Manager {
         check_ajax_referer('gi_seo_nonce', 'nonce');
         global $wpdb;
 
-        // タイムアウト回避のため処理件数を調整
-        $limit = intval($_POST['limit'] ?? 30);
-        $offset = intval($_POST['offset'] ?? 0);
+        // 初回呼び出しかどうかをチェック
+        $is_init = isset($_POST['init']) && $_POST['init'] === 'true';
         $skip_matched = isset($_POST['skip_matched']) ? $_POST['skip_matched'] === 'true' : true;
+        
+        // 初回は総数だけ返す
+        if ($is_init) {
+            if ($skip_matched) {
+                $total = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
+            } else {
+                $total = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}");
+            }
+            wp_send_json_success(array(
+                'total' => $total,
+                'init' => true
+            ));
+            return;
+        }
+
+        // 処理件数（補助金DBの件数ベース）
+        $limit = intval($_POST['limit'] ?? 50);
+        $offset = intval($_POST['offset'] ?? 0);
         
         // 実行時間制限を設定
         set_time_limit(120);
         
-        // 照合対象を取得（すでにマッチ済みを除外するオプション）
+        // 照合対象を取得（補助金DBから）
         if ($skip_matched) {
+            // 未マッチの補助金のみ取得（IDでページネーション）
             $subsidies = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM {$this->table_subsidy} WHERE matched_post_id IS NULL ORDER BY id ASC LIMIT %d OFFSET %d",
+                "SELECT id, title, prefecture FROM {$this->table_subsidy} WHERE matched_post_id IS NULL ORDER BY id ASC LIMIT %d OFFSET %d",
                 $limit, $offset
             ));
-            $total_remaining = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
         } else {
             $subsidies = $wpdb->get_results($wpdb->prepare(
-                "SELECT * FROM {$this->table_subsidy} ORDER BY id ASC LIMIT %d OFFSET %d",
+                "SELECT id, title, prefecture FROM {$this->table_subsidy} ORDER BY id ASC LIMIT %d OFFSET %d",
                 $limit, $offset
             ));
-            $total_remaining = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}") - $offset;
         }
 
-        $processed = 0;
+        $processed = count($subsidies);
         $matched = 0;
         $results = array();
 
         foreach ($subsidies as $subsidy) {
-            $processed++;
-            
-            // メモリ使用量チェック
-            if (memory_get_usage(true) > 128 * 1024 * 1024) {
-                break; // 128MB超えたら中断
+            // メモリ使用量チェック（256MBまで許容）
+            if (memory_get_usage(true) > 256 * 1024 * 1024) {
+                break;
             }
             
             $match = $this->find_matching_post_for_subsidy($subsidy->title, $subsidy->prefecture);
@@ -3351,82 +3365,121 @@ class GI_SEO_Content_Manager {
 
                 $matched++;
                 $results[] = array(
+                    'subsidy_id' => $subsidy->id,
                     'subsidy' => $subsidy->title,
                     'post' => $match['title'],
                     'score' => $match['score']
                 );
             }
-            
-            // 少し待機してサーバー負荷を軽減
-            usleep(10000); // 10ms
         }
 
-        $remaining = $skip_matched 
-            ? $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL")
-            : max(0, $total_remaining - $processed);
+        // 残りの件数を再計算
+        if ($skip_matched) {
+            $remaining = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
+        } else {
+            $total = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}");
+            $remaining = max(0, $total - $offset - $processed);
+        }
 
         wp_send_json_success(array(
             'processed' => $processed,
             'matched' => $matched,
-            'remaining' => (int)$remaining,
-            'has_more' => $processed > 0 && (int)$remaining > 0,
-            'results' => array_slice($results, 0, 20),
+            'remaining' => $remaining,
+            'has_more' => $processed > 0 && $remaining > 0,
+            'results' => array_slice($results, 0, 10),
             'next_offset' => $offset + $processed
         ));
     }
 
     private function find_matching_post_for_subsidy($subsidy_title, $prefecture = '') {
+        global $wpdb;
         $candidates = array();
         
+        // 補助金名を抽出（「○○補助金」の部分）
         $subsidy_name = $this->extract_subsidy_name($subsidy_title);
-        $clean_title = $this->clean_title_for_comparison($subsidy_title);
         
-        $search_terms = array();
-        if (!empty($subsidy_name)) {
-            $search_terms[] = $subsidy_name;
+        // 検索キーワードを準備
+        $search_keywords = array();
+        
+        // 1. 補助金名がある場合は最優先
+        if (!empty($subsidy_name) && mb_strlen($subsidy_name) >= 4) {
+            $search_keywords[] = $subsidy_name;
         }
-        $search_terms[] = $clean_title;
         
-        foreach ($search_terms as $term) {
-            if (empty($term)) continue;
+        // 2. タイトルから主要なキーワードを抽出
+        $keywords = $this->extract_search_keywords($subsidy_title);
+        foreach ($keywords as $kw) {
+            if (!in_array($kw, $search_keywords)) {
+                $search_keywords[] = $kw;
+            }
+        }
+        
+        if (empty($search_keywords)) {
+            return null;
+        }
+        
+        // 直接SQLでLIKE検索（WP_Queryより高速）
+        $post_types = $this->get_target_post_types();
+        $type_placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+        
+        foreach ($search_keywords as $keyword) {
+            if (empty($keyword) || mb_strlen($keyword) < 3) continue;
             
-            $args = array(
-                'post_type' => $this->get_target_post_types(),
-                'post_status' => 'publish',
-                's' => $term,
-                'posts_per_page' => 30
+            $like_keyword = '%' . $wpdb->esc_like($keyword) . '%';
+            
+            $sql = $wpdb->prepare(
+                "SELECT ID, post_title FROM {$wpdb->posts} 
+                 WHERE post_type IN ($type_placeholders) 
+                 AND post_status = 'publish' 
+                 AND post_title LIKE %s 
+                 LIMIT 20",
+                array_merge($post_types, array($like_keyword))
             );
             
-            $query = new WP_Query($args);
+            $posts = $wpdb->get_results($sql);
             
-            foreach ($query->posts as $post) {
+            foreach ($posts as $post) {
+                if (isset($candidates[$post->ID])) continue;
+                
                 $score = 0;
                 $match_type = 'partial';
                 
-                if (mb_stripos($post->post_title, $subsidy_name) !== false && !empty($subsidy_name)) {
-                    $score += 50;
+                // 補助金名が完全に含まれているか
+                if (!empty($subsidy_name) && mb_stripos($post->post_title, $subsidy_name) !== false) {
+                    $score += 60;
                     $match_type = 'exact';
                 }
                 
+                // タイトル類似度
                 $similarity = $this->calculate_title_similarity($subsidy_title, $post->post_title);
-                $score += $similarity * 30;
+                $score += $similarity * 25;
                 
+                // 都道府県マッチ
                 if (!empty($prefecture)) {
-                    $post_regions = $this->extract_region_from_text($post->post_title);
-                    $subsidy_region = $this->normalize_region($prefecture);
-                    
-                    foreach ($post_regions as $region) {
-                        if ($this->normalize_region($region) === $subsidy_region) {
-                            $score += 15;
-                            break;
+                    if (mb_stripos($post->post_title, $prefecture) !== false) {
+                        $score += 20;
+                    } else {
+                        // 地域が違う場合はペナルティ
+                        $post_regions = $this->extract_region_from_text($post->post_title);
+                        if (!empty($post_regions)) {
+                            $found_match = false;
+                            $normalized_pref = $this->normalize_region($prefecture);
+                            foreach ($post_regions as $region) {
+                                if ($this->normalize_region($region) === $normalized_pref) {
+                                    $found_match = true;
+                                    $score += 15;
+                                    break;
+                                }
+                            }
+                            if (!$found_match) {
+                                $score -= 10; // 地域不一致ペナルティ
+                            }
                         }
                     }
                 }
                 
-                $pv = $this->get_post_pv($post->ID);
-                $score += min($pv / 100, 5);
-                
-                if ($score >= 30) {
+                // スコアが閾値を超えた場合のみ候補に追加
+                if ($score >= 35) {
                     $candidates[$post->ID] = array(
                         'post_id' => $post->ID,
                         'title' => $post->post_title,
@@ -3437,18 +3490,48 @@ class GI_SEO_Content_Manager {
                 }
             }
             
-            wp_reset_postdata();
+            // 十分な候補が見つかったら終了
+            if (count($candidates) >= 5) break;
         }
         
         if (empty($candidates)) {
             return null;
         }
         
+        // スコア順にソート
         uasort($candidates, function($a, $b) {
             return $b['score'] - $a['score'];
         });
         
         return reset($candidates);
+    }
+    
+    private function extract_search_keywords($title) {
+        $keywords = array();
+        
+        // 「」内のテキストを抽出
+        if (preg_match_all('/「([^」]+)」/', $title, $matches)) {
+            foreach ($matches[1] as $m) {
+                if (mb_strlen($m) >= 3) $keywords[] = $m;
+            }
+        }
+        
+        // ○○補助金、○○助成金、○○支援金などのパターン
+        if (preg_match('/(\S{2,}(?:補助金|助成金|支援金|給付金|交付金|奨励金))/', $title, $m)) {
+            $keywords[] = $m[1];
+        }
+        
+        // 主要な名詞を抽出（簡易版）
+        $clean = preg_replace('/[【】「」『』（）()\[\]\s　]+/', ' ', $title);
+        $parts = preg_split('/[\s・,、，]+/', $clean);
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if (mb_strlen($part) >= 4 && !preg_match('/^(令和|平成|\d+年度?)/', $part)) {
+                $keywords[] = $part;
+            }
+        }
+        
+        return array_unique($keywords);
     }
 
     // ================================================================
@@ -5373,50 +5456,83 @@ class GI_SEO_Content_Manager {
                 $(this).prop('disabled', true);
                 $('#btn-stop-sync').show();
                 $('#sync-progress-container').show();
+                $('#sync-progress-text').text('初期化中...');
                 
-                var offset = 0, totalMatched = 0, totalProcessed = 0;
                 var skipMatched = $('#skip-matched').is(':checked');
-                var batchSize = 30; // 処理件数を減らして高速化
+                var batchSize = 50;
+                var totalItems = 0;
+                var offset = 0, totalMatched = 0, totalProcessed = 0;
+                
+                // まず総件数を取得
+                $.post(ajaxurl, {
+                    action: 'gi_subsidy_sync_posts',
+                    nonce: nonce,
+                    init: 'true',
+                    skip_matched: skipMatched ? 'true' : 'false'
+                }, function(initR){
+                    if(initR.success && initR.data.init){
+                        totalItems = initR.data.total;
+                        $('#sync-progress-text').text('対象: ' + totalItems + '件の補助金データをスキャンします');
+                        
+                        if(totalItems === 0){
+                            finish();
+                            return;
+                        }
+                        
+                        setTimeout(batch, 300);
+                    } else {
+                        alert('初期化エラー');
+                        finish();
+                    }
+                }).fail(function(){
+                    alert('通信エラー');
+                    finish();
+                });
                 
                 function batch() {
                     if(!syncing) { finish(); return; }
                     
                     $.post(ajaxurl, {
-                        action:'gi_subsidy_sync_posts',
-                        nonce:nonce,
-                        limit:batchSize,
-                        offset:skipMatched ? 0 : offset, // skip_matched=trueの場合はoffsetを使わない
+                        action: 'gi_subsidy_sync_posts',
+                        nonce: nonce,
+                        limit: batchSize,
+                        offset: offset,
                         skip_matched: skipMatched ? 'true' : 'false'
                     }, function(r){
                         if(r.success){
                             totalProcessed += r.data.processed;
                             totalMatched += r.data.matched;
                             
-                            var remaining = r.data.remaining;
-                            var total = totalProcessed + remaining;
-                            var progress = total > 0 ? (totalProcessed / total * 100) : 100;
+                            // 正確なプログレス計算（補助金DB件数ベース）
+                            var progress = totalItems > 0 ? Math.min((totalProcessed / totalItems) * 100, 100) : 100;
                             
-                            $('#sync-progress-bar').css('width', progress + '%');
-                            $('#sync-progress-text').text('処理: ' + totalProcessed + '件 / マッチ: ' + totalMatched + '件 / 残り: ' + remaining + '件');
+                            $('#sync-progress-bar').css('width', progress.toFixed(1) + '%');
+                            $('#sync-progress-text').html(
+                                '<strong>補助金DB照合中</strong>: ' + totalProcessed + ' / ' + totalItems + '件' +
+                                ' | マッチ: <span style="color:#090;font-weight:bold;">' + totalMatched + '件</span>' +
+                                ' | 残り: ' + r.data.remaining + '件'
+                            );
                             
-                            // 定期的に統計を更新（負荷軽減のため5回に1回）
-                            if(totalProcessed % (batchSize * 5) === 0) {
+                            // 統計更新（10バッチごと）
+                            if(totalProcessed % (batchSize * 10) === 0) {
                                 loadStats();
                             }
                             
-                            if(r.data.has_more && syncing){
-                                offset = r.data.next_offset || (offset + batchSize);
-                                setTimeout(batch, 200); // 待機時間を短縮
+                            if(r.data.has_more && syncing && r.data.remaining > 0){
+                                offset = r.data.next_offset;
+                                setTimeout(batch, 100);
                             } else {
                                 finish();
                             }
                         } else {
-                            alert('エラーが発生しました。しばらく待ってから再試行してください。');
-                            finish();
+                            console.error('Sync error:', r);
+                            // エラー時はリトライ
+                            setTimeout(batch, 1000);
                         }
-                    }).fail(function(){
-                        alert('通信エラーが発生しました。');
-                        finish();
+                    }).fail(function(xhr){
+                        console.error('Ajax error:', xhr);
+                        // 通信エラー時もリトライ
+                        setTimeout(batch, 2000);
                     });
                 }
                 
@@ -5424,12 +5540,14 @@ class GI_SEO_Content_Manager {
                     syncing = false;
                     $('#btn-sync-posts').prop('disabled', false);
                     $('#btn-stop-sync').hide();
-                    $('#sync-progress-text').text('完了: ' + totalProcessed + '件処理、' + totalMatched + '件マッチ');
+                    $('#sync-progress-bar').css('width', '100%');
+                    $('#sync-progress-text').html(
+                        '<strong style="color:#090;">✓ 完了</strong>: ' + totalProcessed + '件処理、' +
+                        '<strong>' + totalMatched + '件マッチ</strong>'
+                    );
                     loadStats();
                     loadSubsidies(currentPage);
                 }
-                
-                batch();
             });
 
             $('#btn-stop-sync').click(function(){
