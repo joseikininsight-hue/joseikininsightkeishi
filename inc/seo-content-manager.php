@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) exit;
 
 class GI_SEO_Content_Manager {
-    private $version = '31.1.0';
+    private $version = '31.2.0';
     private $table_queue;
     private $table_failed;
     private $table_merge_history;
@@ -92,6 +92,7 @@ class GI_SEO_Content_Manager {
         add_action('wp_ajax_gi_subsidy_get_stats', array($this, 'ajax_subsidy_get_stats'));
         add_action('wp_ajax_gi_subsidy_check_exists', array($this, 'ajax_subsidy_check_exists'));
         add_action('wp_ajax_gi_subsidy_sync_posts', array($this, 'ajax_subsidy_sync_posts'));
+        add_action('wp_ajax_gi_subsidy_debug_match', array($this, 'ajax_subsidy_debug_match'));
 
         // PV計測（post_metaを使用）
         add_action('wp_ajax_gi_track_pv', array($this, 'ajax_track_pv'));
@@ -3390,49 +3391,101 @@ class GI_SEO_Content_Manager {
             'next_offset' => $offset + $processed
         ));
     }
+    
+    /**
+     * デバッグ用：補助金マッチングのテスト
+     */
+    public function ajax_subsidy_debug_match() {
+        check_ajax_referer('gi_seo_nonce', 'nonce');
+        global $wpdb;
+        
+        // サンプルの補助金データを取得
+        $samples = $wpdb->get_results(
+            "SELECT id, title, prefecture FROM {$this->table_subsidy} WHERE matched_post_id IS NULL LIMIT 5"
+        );
+        
+        $debug_results = array();
+        
+        foreach ($samples as $sample) {
+            $names = $this->extract_all_subsidy_names($sample->title);
+            
+            // 各名前で検索
+            $found_posts = array();
+            foreach ($names as $name) {
+                if (mb_strlen($name) < 3) continue;
+                
+                $like = '%' . $wpdb->esc_like($name) . '%';
+                $posts = $wpdb->get_results($wpdb->prepare(
+                    "SELECT ID, post_title FROM {$wpdb->posts} 
+                     WHERE post_status = 'publish' 
+                     AND post_title LIKE %s 
+                     LIMIT 5",
+                    $like
+                ));
+                
+                foreach ($posts as $p) {
+                    $found_posts[] = array(
+                        'id' => $p->ID,
+                        'title' => $p->post_title,
+                        'matched_by' => $name
+                    );
+                }
+            }
+            
+            $debug_results[] = array(
+                'subsidy_id' => $sample->id,
+                'subsidy_title' => $sample->title,
+                'prefecture' => $sample->prefecture,
+                'extracted_names' => $names,
+                'found_posts' => $found_posts
+            );
+        }
+        
+        // WP投稿のサンプルも取得
+        $wp_posts_sample = $wpdb->get_results(
+            "SELECT ID, post_title FROM {$wpdb->posts} 
+             WHERE post_status = 'publish' 
+             AND post_type IN ('post', 'page')
+             AND (post_title LIKE '%補助金%' OR post_title LIKE '%助成金%')
+             LIMIT 20"
+        );
+        
+        wp_send_json_success(array(
+            'debug_results' => $debug_results,
+            'wp_posts_with_subsidy' => $wp_posts_sample,
+            'total_subsidies' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}"),
+            'unmatched_subsidies' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL")
+        ));
+    }
 
     private function find_matching_post_for_subsidy($subsidy_title, $prefecture = '') {
         global $wpdb;
-        $candidates = array();
         
-        // 補助金名を抽出（「○○補助金」の部分）
-        $subsidy_name = $this->extract_subsidy_name($subsidy_title);
+        // ステップ1: 補助金名を抽出
+        $subsidy_names = $this->extract_all_subsidy_names($subsidy_title);
         
-        // 検索キーワードを準備
-        $search_keywords = array();
-        
-        // 1. 補助金名がある場合は最優先
-        if (!empty($subsidy_name) && mb_strlen($subsidy_name) >= 4) {
-            $search_keywords[] = $subsidy_name;
-        }
-        
-        // 2. タイトルから主要なキーワードを抽出
-        $keywords = $this->extract_search_keywords($subsidy_title);
-        foreach ($keywords as $kw) {
-            if (!in_array($kw, $search_keywords)) {
-                $search_keywords[] = $kw;
-            }
-        }
-        
-        if (empty($search_keywords)) {
+        if (empty($subsidy_names)) {
             return null;
         }
         
-        // 直接SQLでLIKE検索（WP_Queryより高速）
+        // 投稿タイプを取得
         $post_types = $this->get_target_post_types();
         $type_placeholders = implode(',', array_fill(0, count($post_types), '%s'));
         
-        foreach ($search_keywords as $keyword) {
-            if (empty($keyword) || mb_strlen($keyword) < 3) continue;
+        $candidates = array();
+        
+        // ステップ2: 各補助金名でWP投稿を検索
+        foreach ($subsidy_names as $name) {
+            if (mb_strlen($name) < 3) continue;
             
-            $like_keyword = '%' . $wpdb->esc_like($keyword) . '%';
+            $like_keyword = '%' . $wpdb->esc_like($name) . '%';
             
             $sql = $wpdb->prepare(
                 "SELECT ID, post_title FROM {$wpdb->posts} 
                  WHERE post_type IN ($type_placeholders) 
                  AND post_status = 'publish' 
                  AND post_title LIKE %s 
-                 LIMIT 20",
+                 LIMIT 30",
                 array_merge($post_types, array($like_keyword))
             );
             
@@ -3441,52 +3494,26 @@ class GI_SEO_Content_Manager {
             foreach ($posts as $post) {
                 if (isset($candidates[$post->ID])) continue;
                 
-                $score = 0;
-                $match_type = 'partial';
+                $score = 50; // 補助金名が含まれている時点で基本スコア
+                $match_type = 'name_match';
                 
-                // 補助金名が完全に含まれているか
-                if (!empty($subsidy_name) && mb_stripos($post->post_title, $subsidy_name) !== false) {
-                    $score += 60;
+                // 補助金名の長さでボーナス（長いほど確実なマッチ）
+                $score += min(mb_strlen($name), 20);
+                
+                // 都道府県もマッチすればボーナス
+                if (!empty($prefecture) && mb_stripos($post->post_title, $prefecture) !== false) {
+                    $score += 20;
                     $match_type = 'exact';
                 }
                 
-                // タイトル類似度
-                $similarity = $this->calculate_title_similarity($subsidy_title, $post->post_title);
-                $score += $similarity * 25;
-                
-                // 都道府県マッチ
-                if (!empty($prefecture)) {
-                    if (mb_stripos($post->post_title, $prefecture) !== false) {
-                        $score += 20;
-                    } else {
-                        // 地域が違う場合はペナルティ
-                        $post_regions = $this->extract_region_from_text($post->post_title);
-                        if (!empty($post_regions)) {
-                            $found_match = false;
-                            $normalized_pref = $this->normalize_region($prefecture);
-                            foreach ($post_regions as $region) {
-                                if ($this->normalize_region($region) === $normalized_pref) {
-                                    $found_match = true;
-                                    $score += 15;
-                                    break;
-                                }
-                            }
-                            if (!$found_match) {
-                                $score -= 10; // 地域不一致ペナルティ
-                            }
-                        }
-                    }
-                }
-                
-                // スコアが閾値を超えた場合のみ候補に追加
-                if ($score >= 35) {
-                    $candidates[$post->ID] = array(
-                        'post_id' => $post->ID,
-                        'title' => $post->post_title,
-                        'url' => get_permalink($post->ID),
-                        'score' => $score,
-                        'match_type' => $match_type
-                    );
+                $candidates[$post->ID] = array(
+                    'post_id' => $post->ID,
+                    'title' => $post->post_title,
+                    'url' => get_permalink($post->ID),
+                    'score' => $score,
+                    'match_type' => $match_type,
+                    'matched_name' => $name
+                );
                 }
             }
             
@@ -3504,6 +3531,67 @@ class GI_SEO_Content_Manager {
         });
         
         return reset($candidates);
+    }
+    
+    /**
+     * 補助金タイトルから全ての補助金名を抽出
+     * 例: 「令和6年度 小規模事業者持続化補助金（一般型）」
+     *     → 「小規模事業者持続化補助金」「持続化補助金」
+     */
+    private function extract_all_subsidy_names($title) {
+        $names = array();
+        
+        // パターン1: 〇〇補助金、〇〇助成金など（最も重要）
+        $suffix_patterns = array('補助金', '助成金', '支援金', '給付金', '交付金', '奨励金', '支援事業', '補助事業');
+        foreach ($suffix_patterns as $suffix) {
+            // 全体マッチ（例：小規模事業者持続化補助金）
+            if (preg_match('/([ぁ-んァ-ヶー一-龥a-zA-Z0-9]{2,20}' . $suffix . ')/', $title, $m)) {
+                $name = $m[1];
+                // 年度や記号を除去
+                $name = preg_replace('/^(令和|平成|R|H)?\d+年度?\s*/', '', $name);
+                if (mb_strlen($name) >= 4) {
+                    $names[] = $name;
+                }
+            }
+        }
+        
+        // パターン2: 「」内のテキスト
+        if (preg_match_all('/「([^」]{3,30})」/', $title, $matches)) {
+            foreach ($matches[1] as $m) {
+                $m = trim($m);
+                if (mb_strlen($m) >= 3) {
+                    $names[] = $m;
+                }
+            }
+        }
+        
+        // パターン3: 【】内のテキスト（都道府県以外）
+        if (preg_match_all('/【([^】]{3,30})】/', $title, $matches)) {
+            foreach ($matches[1] as $m) {
+                $m = trim($m);
+                // 都道府県名だけの場合はスキップ
+                if (!preg_match('/^(北海道|東京都|大阪府|京都府|.{2,3}県)$/', $m) && mb_strlen($m) >= 3) {
+                    $names[] = $m;
+                }
+            }
+        }
+        
+        // パターン4: 省略名の展開（持続化補助金 → 小規模事業者持続化補助金）
+        $abbreviations = array(
+            '持続化補助金' => '小規模事業者持続化補助金',
+            'ものづくり補助金' => 'ものづくり・商業・サービス生産性向上促進補助金',
+            '事業再構築補助金' => '事業再構築補助金',
+            'IT導入補助金' => 'IT導入補助金',
+        );
+        foreach ($abbreviations as $short => $full) {
+            if (mb_stripos($title, $short) !== false) {
+                $names[] = $short;
+                $names[] = $full;
+            }
+        }
+        
+        // 重複除去して返す
+        return array_unique(array_filter($names));
     }
     
     private function extract_search_keywords($title) {
@@ -5170,16 +5258,18 @@ class GI_SEO_Content_Manager {
 
             <div class="gi-card">
                 <h3>🔗 投稿照合</h3>
-                <p style="color:#666;font-size:13px;">補助金DBと投稿記事を照合し、すでに記事化されているかを自動判定します。</p>
+                <p style="color:#666;font-size:13px;">補助金DBの各タイトルから補助金名を抽出し、WP投稿のタイトルに含まれているかを照合します。</p>
                 <div style="margin-bottom:15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
                     <label><input type="checkbox" id="skip-matched" checked> 既に登録済みのものを除外</label>
                     <button class="gi-btn gi-btn-success" id="btn-sync-posts">🔄 投稿と照合開始</button>
                     <button class="gi-btn" id="btn-stop-sync" style="display:none;">停止</button>
+                    <button class="gi-btn" id="btn-debug-match" style="background:#f0f0f0;">🔍 デバッグ</button>
                 </div>
                 <div class="gi-progress" id="sync-progress-container" style="display:none;">
                     <div class="gi-progress-bar" id="sync-progress-bar" style="width:0%"></div>
                 </div>
                 <div id="sync-progress-text" style="font-size:12px;color:#666;"></div>
+                <div id="debug-output" style="display:none; margin-top:15px; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px; max-height:400px; overflow:auto; font-size:12px;"></div>
             </div>
 
             <div class="gi-card">
@@ -5553,6 +5643,65 @@ class GI_SEO_Content_Manager {
             $('#btn-stop-sync').click(function(){
                 syncing = false;
                 $(this).hide();
+            });
+            
+            // デバッグボタン
+            $('#btn-debug-match').click(function(){
+                var btn = $(this);
+                btn.prop('disabled', true).text('確認中...');
+                $('#debug-output').show().html('デバッグ情報を取得中...');
+                
+                $.post(ajaxurl, {action:'gi_subsidy_debug_match', nonce:nonce}, function(r){
+                    btn.prop('disabled', false).text('🔍 デバッグ');
+                    
+                    if(r.success){
+                        var html = '<h4>📊 データ概要</h4>';
+                        html += '<p>補助金DB総数: <strong>' + r.data.total_subsidies + '</strong>件 / 未マッチ: <strong>' + r.data.unmatched_subsidies + '</strong>件</p>';
+                        
+                        html += '<h4>🔍 WP投稿（補助金・助成金を含む）- サンプル</h4>';
+                        if(r.data.wp_posts_with_subsidy.length > 0){
+                            html += '<ul style="max-height:150px;overflow:auto;">';
+                            r.data.wp_posts_with_subsidy.forEach(function(p){
+                                html += '<li><a href="/?p=' + p.ID + '" target="_blank">' + p.post_title + '</a> (ID:' + p.ID + ')</li>';
+                            });
+                            html += '</ul>';
+                        } else {
+                            html += '<p style="color:red;">⚠️ WP投稿に「補助金」「助成金」を含む記事が見つかりません！</p>';
+                        }
+                        
+                        html += '<h4>🧪 マッチングテスト（未マッチ補助金5件）</h4>';
+                        r.data.debug_results.forEach(function(d){
+                            html += '<div style="margin-bottom:15px;padding:10px;background:#fff;border:1px solid #ddd;">';
+                            html += '<p><strong>補助金タイトル:</strong> ' + d.subsidy_title + '</p>';
+                            html += '<p><strong>都道府県:</strong> ' + (d.prefecture || '(なし)') + '</p>';
+                            html += '<p><strong>抽出された補助金名:</strong> ';
+                            if(d.extracted_names.length > 0){
+                                html += '<span style="color:green;">' + d.extracted_names.join(', ') + '</span>';
+                            } else {
+                                html += '<span style="color:red;">抽出できませんでした</span>';
+                            }
+                            html += '</p>';
+                            html += '<p><strong>マッチした投稿:</strong> ';
+                            if(d.found_posts.length > 0){
+                                html += '<ul>';
+                                d.found_posts.forEach(function(fp){
+                                    html += '<li><a href="/?p=' + fp.id + '" target="_blank">' + fp.title + '</a> (マッチ: ' + fp.matched_by + ')</li>';
+                                });
+                                html += '</ul>';
+                            } else {
+                                html += '<span style="color:orange;">なし</span>';
+                            }
+                            html += '</p></div>';
+                        });
+                        
+                        $('#debug-output').html(html);
+                    } else {
+                        $('#debug-output').html('<p style="color:red;">エラー: ' + r.data + '</p>');
+                    }
+                }).fail(function(){
+                    btn.prop('disabled', false).text('🔍 デバッグ');
+                    $('#debug-output').html('<p style="color:red;">通信エラー</p>');
+                });
             });
 
             $(document).on('click', '.btn-check-exists', function(){
