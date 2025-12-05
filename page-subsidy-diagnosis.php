@@ -3609,15 +3609,166 @@ html, body {
     margin-top: 16px;
 }
 
+/* ========================================
+   結果サマリーパネル
+   ======================================== */
+.diag-results-summary {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #86efac;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.diag-results-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.diag-results-summary-icon {
+    width: 40px;
+    height: 40px;
+    background: #22c55e;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.diag-results-summary-icon svg {
+    width: 20px;
+    height: 20px;
+    color: white;
+}
+
+.diag-results-summary-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #166534;
+    margin: 0;
+}
+
+.diag-results-summary-count {
+    font-size: 13px;
+    color: #15803d;
+    margin-top: 2px;
+}
+
+.diag-results-summary-info {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+    padding-top: 12px;
+    border-top: 1px solid #86efac;
+}
+
+.diag-summary-stat {
+    text-align: center;
+}
+
+.diag-summary-stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #166534;
+}
+
+.diag-summary-stat-label {
+    font-size: 11px;
+    color: #15803d;
+}
+
+/* ========================================
+   フィードバックバー
+   ======================================== */
+.diag-results-feedback-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--diag-gray-50);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.diag-results-feedback-text {
+    font-size: 13px;
+    color: var(--diag-gray-600);
+}
+
+.diag-results-feedback-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.diag-results-fb-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: white;
+    border: 1px solid var(--diag-gray-200);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--diag-gray-600);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.diag-results-fb-btn:hover {
+    background: var(--diag-gray-100);
+}
+
+.diag-results-fb-btn.selected.positive {
+    background: #dcfce7;
+    border-color: #22c55e;
+    color: #166534;
+}
+
+.diag-results-fb-btn.selected.negative {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #dc2626;
+}
+
+.diag-results-fb-btn svg {
+    flex-shrink: 0;
+}
+
+/* ========================================
+   セクションタイトル
+   ======================================== */
+.diag-results-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--diag-gray-800);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--diag-black);
+}
+
+/* ========================================
+   結果カード
+   ======================================== */
 .diag-popup-result-card {
     border: 1px solid var(--diag-gray-200);
     padding: 14px;
     margin-bottom: 10px;
     background: var(--diag-white);
+    border-radius: 8px;
+    transition: all 0.2s;
 }
 
 .diag-popup-result-card:hover {
     border-color: var(--diag-black);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.diag-popup-result-card--highlight {
+    border-left: 3px solid var(--diag-black);
 }
 
 .diag-popup-result-header {
@@ -3627,17 +3778,37 @@ html, body {
     margin-bottom: 10px;
 }
 
+.diag-popup-result-header-info {
+    flex: 1;
+}
+
 .diag-popup-result-rank {
     width: 28px;
     height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--diag-black);
-    color: var(--diag-white);
+    background: var(--diag-gray-200);
+    color: var(--diag-gray-700);
     font-size: 11px;
     font-weight: 700;
     flex-shrink: 0;
+    border-radius: 50%;
+}
+
+.diag-popup-result-rank--1 {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: white;
+}
+
+.diag-popup-result-rank--2 {
+    background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%);
+    color: white;
+}
+
+.diag-popup-result-rank--3 {
+    background: linear-gradient(135deg, #cd7c2c 0%, #b45309 100%);
+    color: white;
 }
 
 .diag-popup-result-title {
@@ -3648,12 +3819,33 @@ html, body {
     line-height: 1.4;
 }
 
+.diag-popup-result-score {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--diag-black);
+    color: white;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
 .diag-popup-result-meta {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     font-size: 11px;
     color: var(--diag-gray-600);
     margin-bottom: 10px;
+}
+
+.diag-popup-result-amount {
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.diag-popup-result-deadline {
+    color: #dc2626;
 }
 
 .diag-popup-result-reason {
@@ -3663,6 +3855,13 @@ html, body {
     background: #fef2f2;
     border-left: 3px solid #dc2626;
     margin-bottom: 10px;
+    border-radius: 0 4px 4px 0;
+}
+
+.diag-popup-result-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .diag-popup-result-btn {
@@ -3678,10 +3877,130 @@ html, body {
     text-align: center;
     text-decoration: none;
     display: block;
+    border-radius: 6px;
+    transition: all 0.2s;
 }
 
 .diag-popup-result-btn:hover {
     background: var(--diag-gray-800);
+}
+
+.diag-popup-result-btn--primary {
+    background: var(--diag-black);
+    color: white;
+}
+
+.diag-popup-result-btn--secondary {
+    background: white;
+    color: var(--diag-gray-700);
+    border: 1px solid var(--diag-gray-300);
+}
+
+.diag-popup-result-btn--secondary:hover {
+    background: var(--diag-gray-100);
+}
+
+/* ========================================
+   個別フィードバック
+   ======================================== */
+.diag-result-feedback {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--diag-gray-100);
+}
+
+.diag-result-feedback-label {
+    font-size: 12px;
+    color: var(--diag-gray-500);
+}
+
+.diag-feedback-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--diag-gray-100);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--diag-gray-500);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.diag-feedback-btn:hover {
+    background: var(--diag-gray-200);
+    color: var(--diag-gray-700);
+}
+
+.diag-feedback-btn.selected[data-feedback="positive"] {
+    background: #dcfce7;
+    border-color: #22c55e;
+    color: #166534;
+}
+
+.diag-feedback-btn.selected[data-feedback="negative"] {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #dc2626;
+}
+
+/* ========================================
+   再調整パネル
+   ======================================== */
+.diag-readjust-panel {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--diag-gray-50);
+    border-radius: 8px;
+}
+
+.diag-readjust-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--diag-gray-700);
+    margin-bottom: 12px;
+}
+
+.diag-readjust-header svg {
+    color: var(--diag-gray-500);
+}
+
+.diag-readjust-options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.diag-readjust-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 12px;
+    background: white;
+    border: 1px solid var(--diag-gray-200);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--diag-gray-700);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.diag-readjust-btn:hover {
+    border-color: var(--diag-black);
+    background: var(--diag-gray-100);
+}
+
+.diag-readjust-btn svg {
+    flex-shrink: 0;
+    color: var(--diag-gray-500);
 }
 
 /* ポップアップ モバイル対応 */
@@ -3986,19 +4305,75 @@ document.addEventListener('DOMContentLoaded', function() {
         resultsDiv.className = 'diag-popup-results';
         
         let html = '';
+        
+        // ========================================
+        // 結果サマリーパネル
+        // ========================================
+        let totalAmount = 0;
+        let openCount = 0;
+        results.slice(0, 5).forEach(function(r) {
+            if (r.max_amount_numeric) totalAmount += r.max_amount_numeric;
+            if (r.application_status === 'open' || !r.application_status) openCount++;
+        });
+        const amountDisplay = totalAmount > 100000000 ? Math.round(totalAmount / 100000000) + '億円+' : (totalAmount > 10000 ? Math.round(totalAmount / 10000) + '万円+' : '要確認');
+        
+        html += '<div class="diag-results-summary">';
+        html += '<div class="diag-results-summary-header">';
+        html += '<div class="diag-results-summary-icon">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>';
+        html += '</div>';
+        html += '<div>';
+        html += '<div class="diag-results-summary-title">診断完了</div>';
+        html += '<div class="diag-results-summary-count">' + results.length + '件の補助金が見つかりました</div>';
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="diag-results-summary-info">';
+        html += '<div class="diag-summary-stat"><div class="diag-summary-stat-value">' + results.length + '</div><div class="diag-summary-stat-label">該当件数</div></div>';
+        html += '<div class="diag-summary-stat"><div class="diag-summary-stat-value">' + openCount + '</div><div class="diag-summary-stat-label">受付中</div></div>';
+        html += '<div class="diag-summary-stat"><div class="diag-summary-stat-value">' + amountDisplay + '</div><div class="diag-summary-stat-label">補助金額目安</div></div>';
+        html += '</div>';
+        html += '</div>';
+        
+        // ========================================
+        // フィードバックバー
+        // ========================================
+        html += '<div class="diag-results-feedback-bar">';
+        html += '<span class="diag-results-feedback-text">この診断結果はいかがでしたか？</span>';
+        html += '<div class="diag-results-feedback-btns">';
+        html += '<button type="button" class="diag-results-fb-btn positive" data-feedback="positive">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
+        html += '<span>参考になった</span>';
+        html += '</button>';
+        html += '<button type="button" class="diag-results-fb-btn negative" data-feedback="negative">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
+        html += '<span>期待と違った</span>';
+        html += '</button>';
+        html += '</div>';
+        html += '</div>';
+        
+        // ========================================
+        // メイン結果（上位5件）
+        // ========================================
+        html += '<div class="diag-results-section-title">おすすめの補助金</div>';
         results.slice(0, 5).forEach(function(result, index) {
-            html += '<div class="diag-popup-result-card">';
+            const rankClass = index < 3 ? ' diag-popup-result-card--highlight' : '';
+            html += '<div class="diag-popup-result-card' + rankClass + '" data-grant-id="' + (result.grant_id || '') + '">';
             html += '<div class="diag-popup-result-header">';
-            html += '<div class="diag-popup-result-rank">' + (index + 1) + '</div>';
+            html += '<div class="diag-popup-result-rank diag-popup-result-rank--' + (index + 1) + '">' + (index + 1) + '</div>';
+            html += '<div class="diag-popup-result-header-info">';
             html += '<h4 class="diag-popup-result-title">' + escapeHtml(result.title) + '</h4>';
+            if (result.score) {
+                html += '<div class="diag-popup-result-score">マッチ度 ' + result.score + '点</div>';
+            }
+            html += '</div>';
             html += '</div>';
             
             html += '<div class="diag-popup-result-meta">';
             if (result.amount_display) {
-                html += '<span>上限: ' + escapeHtml(result.amount_display) + '</span>';
+                html += '<span class="diag-popup-result-amount">上限: ' + escapeHtml(result.amount_display) + '</span>';
             }
             if (result.deadline_display) {
-                html += '<span>締切: ' + escapeHtml(result.deadline_display) + '</span>';
+                html += '<span class="diag-popup-result-deadline">締切: ' + escapeHtml(result.deadline_display) + '</span>';
             }
             html += '</div>';
             
@@ -4006,16 +4381,201 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += '<div class="diag-popup-result-reason">' + escapeHtml(result.reason) + '</div>';
             }
             
+            html += '<div class="diag-popup-result-actions">';
             if (result.url) {
-                html += '<a href="' + escapeHtml(result.url) + '" class="diag-popup-result-btn" target="_blank">詳細を見る</a>';
+                html += '<a href="' + escapeHtml(result.url) + '" class="diag-popup-result-btn diag-popup-result-btn--primary" target="_blank">詳細ページを見る →</a>';
             }
+            html += '<button type="button" class="diag-popup-result-btn diag-popup-result-btn--secondary diag-btn-ask-about" data-grant-id="' + (result.grant_id || '') + '" data-title="' + escapeHtml(result.title) + '">この補助金について質問</button>';
+            html += '</div>';
+            
+            // 個別フィードバック
+            html += '<div class="diag-result-feedback">';
+            html += '<span class="diag-result-feedback-label">この結果は？</span>';
+            html += '<button type="button" class="diag-feedback-btn" data-feedback="positive" data-grant-id="' + (result.grant_id || '') + '">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
+            html += '</button>';
+            html += '<button type="button" class="diag-feedback-btn" data-feedback="negative" data-grant-id="' + (result.grant_id || '') + '">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
+            html += '</button>';
+            html += '</div>';
             
             html += '</div>';
         });
         
+        // ========================================
+        // 再調整パネル
+        // ========================================
+        html += '<div class="diag-readjust-panel">';
+        html += '<div class="diag-readjust-header">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">';
+        html += '<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>';
+        html += '</svg>';
+        html += '<span>結果が期待と異なる場合</span>';
+        html += '</div>';
+        html += '<div class="diag-readjust-options">';
+        html += '<button type="button" class="diag-readjust-btn" data-adjust="expand_area">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>';
+        html += '<span>地域を広げる</span>';
+        html += '</button>';
+        html += '<button type="button" class="diag-readjust-btn" data-adjust="national">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+        html += '<span>全国で検索</span>';
+        html += '</button>';
+        html += '<button type="button" class="diag-readjust-btn" data-adjust="change_purpose">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
+        html += '<span>目的を変更</span>';
+        html += '</button>';
+        html += '<button type="button" class="diag-readjust-btn" data-adjust="restart">';
+        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>';
+        html += '<span>最初から</span>';
+        html += '</button>';
+        html += '</div>';
+        html += '</div>';
+        
         resultsDiv.innerHTML = html;
         chatMessages.appendChild(resultsDiv);
         scrollToBottom();
+        
+        // ========================================
+        // イベントハンドラーをバインド
+        // ========================================
+        bindResultsEvents(resultsDiv);
+    }
+    
+    // ========================================
+    // 結果エリアのイベントハンドラー
+    // ========================================
+    function bindResultsEvents(container) {
+        // フィードバックバーのクリック
+        container.querySelectorAll('.diag-results-fb-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const feedback = this.getAttribute('data-feedback');
+                container.querySelectorAll('.diag-results-fb-btn').forEach(function(b) {
+                    b.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                
+                // フィードバック送信
+                sendFeedback(0, feedback);
+                
+                const msg = feedback === 'positive' ? 'ありがとうございます！' : 'ご意見をありがとうございます。';
+                const textEl = container.querySelector('.diag-results-feedback-text');
+                if (textEl) textEl.textContent = msg;
+            });
+        });
+        
+        // 個別結果フィードバック
+        container.querySelectorAll('.diag-feedback-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const feedback = this.getAttribute('data-feedback');
+                const grantId = this.getAttribute('data-grant-id');
+                const parent = this.closest('.diag-result-feedback');
+                
+                parent.querySelectorAll('.diag-feedback-btn').forEach(function(b) {
+                    b.classList.remove('selected');
+                });
+                this.classList.add('selected');
+                
+                sendFeedback(grantId, feedback);
+            });
+        });
+        
+        // 再調整ボタン
+        container.querySelectorAll('.diag-readjust-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const adjustType = this.getAttribute('data-adjust');
+                
+                if (adjustType === 'restart') {
+                    startChat();
+                } else if (adjustType === 'change_purpose') {
+                    const newPurpose = prompt('新しい目的を入力してください：');
+                    if (newPurpose) {
+                        readjust('purpose', newPurpose);
+                    }
+                } else {
+                    readjust(adjustType, '');
+                }
+            });
+        });
+        
+        // 質問ボタン
+        container.querySelectorAll('.diag-btn-ask-about').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const title = this.getAttribute('data-title');
+                const message = '「' + title + '」について詳しく教えてください';
+                addUserMessage(message);
+                sendChatMessage(message, '');
+            });
+        });
+    }
+    
+    // ========================================
+    // フィードバック送信
+    // ========================================
+    async function sendFeedback(grantId, feedback) {
+        if (!chatState.sessionId) return;
+        
+        try {
+            await fetch(API_BASE + '/feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                },
+                body: JSON.stringify({
+                    session_id: chatState.sessionId,
+                    grant_id: grantId || 0,
+                    feedback: feedback
+                })
+            });
+            console.log('Feedback sent:', feedback, grantId);
+        } catch (error) {
+            console.error('Feedback error:', error);
+        }
+    }
+    
+    // ========================================
+    // 再調整機能
+    // ========================================
+    async function readjust(adjustType, newValue) {
+        if (!chatState.sessionId || chatState.isLoading) return;
+        
+        chatState.isLoading = true;
+        showTypingIndicator();
+        
+        try {
+            const response = await fetch(API_BASE + '/readjust', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                },
+                body: JSON.stringify({
+                    session_id: chatState.sessionId,
+                    adjust_type: adjustType,
+                    new_value: newValue || ''
+                })
+            });
+            
+            const data = await response.json();
+            hideTypingIndicator();
+            
+            if (data.success) {
+                addBotMessage(data.message);
+                
+                if (data.results && data.results.length > 0) {
+                    addResultsMessage(data.results);
+                }
+            } else {
+                addBotMessage('再検索中にエラーが発生しました。');
+            }
+        } catch (error) {
+            console.error('Readjust error:', error);
+            hideTypingIndicator();
+            addBotMessage('通信エラーが発生しました。');
+        }
+        
+        chatState.isLoading = false;
     }
     
     // ========================================
