@@ -7766,23 +7766,114 @@ function gip_frontend_css() {
     height: 16px;
 }
 
-/* 詳細フィードバックボタン */
-.gip-open-feedback-modal {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    background: var(--gip-accent);
-    border: none;
-    border-radius: 20px;
+/* フィードバック選択済みスタイル */
+.gip-results-fb-btn.selected.positive {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #059669;
+}
+
+.gip-results-fb-btn.selected.negative {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #dc2626;
+}
+
+/* フィードバックパネル */
+.gip-results-feedback-panel {
+    margin-bottom: 16px;
+}
+
+/* フィードバックコメント入力欄 */
+.gip-feedback-comment-section {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--gip-gray-50);
+    border-radius: var(--gip-radius);
+}
+
+.gip-feedback-comment-header {
+    margin-bottom: 10px;
+}
+
+.gip-feedback-comment-label {
     font-size: 13px;
+    font-weight: 600;
+    color: var(--gip-gray-700);
+}
+
+.gip-feedback-comment-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--gip-gray-300);
+    border-radius: var(--gip-radius);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 80px;
+    box-sizing: border-box;
+}
+
+.gip-feedback-comment-input:focus {
+    outline: none;
+    border-color: var(--gip-accent);
+}
+
+.gip-feedback-comment-input::placeholder {
+    color: var(--gip-gray-400);
+}
+
+.gip-feedback-submit-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.gip-feedback-submit-btn {
+    flex: 1;
+    padding: 10px 16px;
+    background: var(--gip-accent);
     color: var(--gip-white);
+    border: none;
+    border-radius: var(--gip-radius);
+    font-size: 13px;
+    font-weight: 600;
     cursor: pointer;
     transition: var(--gip-transition);
 }
 
-.gip-open-feedback-modal:hover {
+.gip-feedback-submit-btn:hover {
     background: var(--gip-gray-800);
+}
+
+.gip-feedback-skip-btn {
+    padding: 10px 16px;
+    background: var(--gip-white);
+    color: var(--gip-gray-600);
+    border: 1px solid var(--gip-gray-300);
+    border-radius: var(--gip-radius);
+    font-size: 13px;
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-skip-btn:hover {
+    background: var(--gip-gray-100);
+    color: var(--gip-gray-700);
+}
+
+.gip-feedback-thanks {
+    padding: 16px;
+    background: linear-gradient(135deg, #d1fae5 0%, #f0fdf4 100%);
+    border-radius: var(--gip-radius);
+    text-align: center;
+}
+
+.gip-feedback-thanks-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #059669;
 }
 
 /* PC向けポップアップサイズ拡大 */
@@ -8704,7 +8795,8 @@ function gip_frontend_js() {
             html += '</div>';
             html += '</div>';
             
-            // フィードバックバー
+            // フィードバックパネル（コメント入力欄付き）
+            html += '<div class="gip-results-feedback-panel">';
             html += '<div class="gip-results-feedback-bar">';
             html += '<span class="gip-results-feedback-text">この診断結果はいかがでしたか？</span>';
             html += '<div class="gip-results-feedback-btns">';
@@ -8716,10 +8808,22 @@ function gip_frontend_js() {
             html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
             html += '期待と違った';
             html += '</button>';
-            html += '<button type="button" class="gip-open-feedback-modal">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
-            html += '詳細を送る';
-            html += '</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            // フィードバックコメント入力欄（初期非表示、ボタンクリックで表示）
+            html += '<div class="gip-feedback-comment-section" style="display:none;">';
+            html += '<div class="gip-feedback-comment-header">';
+            html += '<span class="gip-feedback-comment-label">ご意見・改善点をお聞かせください（任意）</span>';
+            html += '</div>';
+            html += '<textarea class="gip-feedback-comment-input" rows="3" placeholder="診断結果について気になった点や、改善のご要望があればお聞かせください..."></textarea>';
+            html += '<div class="gip-feedback-submit-row">';
+            html += '<button type="button" class="gip-feedback-submit-btn">送信する</button>';
+            html += '<button type="button" class="gip-feedback-skip-btn">スキップ</button>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="gip-feedback-thanks" style="display:none;">';
+            html += '<span class="gip-feedback-thanks-text">ご協力ありがとうございました！</span>';
             html += '</div>';
             html += '</div>';
             
@@ -8809,25 +8913,51 @@ function gip_frontend_js() {
         bindResultsEvents: function() {
             var self = this;
             
+            // 現在のフィードバックタイプを保存
+            var currentFeedbackType = null;
+            
             // フィードバックバーのクリック
             self.$results.off('click.gipfb').on('click.gipfb', '.gip-results-fb-btn', function() {
                 var feedback = $(this).data('feedback');
+                currentFeedbackType = feedback;
                 $(this).addClass('selected').siblings().removeClass('selected');
                 
-                // 全体フィードバック送信（個別補助金ではなくセッション全体に対して）
-                self.sendDetailedFeedback({
-                    feedbackType: feedback === 'positive' ? 'helpful' : 'not_helpful',
-                    rating: feedback === 'positive' ? 4 : 2
-                });
+                // 基本フィードバック送信（即座に保存）
+                self.sendFeedback(0, feedback === 'positive' ? 'positive' : 'negative');
                 
                 // フィードバック送信完了メッセージ
                 var msg = feedback === 'positive' ? 'ありがとうございます！' : 'ご意見をありがとうございます。';
                 $(this).closest('.gip-results-feedback-bar').find('.gip-results-feedback-text').text(msg);
+                
+                // コメント入力欄を表示
+                var $panel = $(this).closest('.gip-results-feedback-panel');
+                $panel.find('.gip-feedback-comment-section').slideDown(200);
             });
             
-            // 詳細フィードバックモーダル
-            self.$results.off('click.gipmodal').on('click.gipmodal', '.gip-open-feedback-modal', function() {
-                self.showFeedbackModal(0);
+            // フィードバックコメント送信
+            self.$results.off('click.gipfbsubmit').on('click.gipfbsubmit', '.gip-feedback-submit-btn', function() {
+                var $panel = $(this).closest('.gip-results-feedback-panel');
+                var comment = $panel.find('.gip-feedback-comment-input').val().trim();
+                
+                if (comment) {
+                    // 詳細フィードバック送信
+                    self.sendDetailedFeedback({
+                        feedbackType: currentFeedbackType === 'positive' ? 'helpful' : 'not_helpful',
+                        rating: currentFeedbackType === 'positive' ? 4 : 2,
+                        comment: comment
+                    });
+                }
+                
+                // コメント欄を非表示、感謝メッセージ表示
+                $panel.find('.gip-feedback-comment-section').slideUp(200);
+                $panel.find('.gip-feedback-thanks').slideDown(200);
+            });
+            
+            // フィードバックスキップ
+            self.$results.off('click.gipfbskip').on('click.gipfbskip', '.gip-feedback-skip-btn', function() {
+                var $panel = $(this).closest('.gip-results-feedback-panel');
+                $panel.find('.gip-feedback-comment-section').slideUp(200);
+                $panel.find('.gip-feedback-thanks').slideDown(200);
             });
             
             // 再調整ボタン
@@ -10411,7 +10541,8 @@ function gip_shortcode_chat_modal($atts = array()) {
                         html += '</div>';
                         html += '</div>';
                         
-                        // フィードバックバー
+                        // フィードバックパネル（コメント入力欄付き）
+                        html += '<div class="gip-results-feedback-panel">';
                         html += '<div class="gip-results-feedback-bar">';
                         html += '<span class="gip-results-feedback-text">この診断結果はいかがでしたか？</span>';
                         html += '<div class="gip-results-feedback-btns">';
@@ -10423,10 +10554,22 @@ function gip_shortcode_chat_modal($atts = array()) {
                         html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
                         html += '期待と違った';
                         html += '</button>';
-                        html += '<button type="button" class="gip-open-feedback-modal">';
-                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
-                        html += '詳細を送る';
-                        html += '</button>';
+                        html += '</div>';
+                        html += '</div>';
+                        
+                        // フィードバックコメント入力欄（初期非表示）
+                        html += '<div class="gip-feedback-comment-section" style="display:none;">';
+                        html += '<div class="gip-feedback-comment-header">';
+                        html += '<span class="gip-feedback-comment-label">ご意見・改善点をお聞かせください（任意）</span>';
+                        html += '</div>';
+                        html += '<textarea class="gip-feedback-comment-input" rows="3" placeholder="診断結果について気になった点や、改善のご要望があればお聞かせください..."></textarea>';
+                        html += '<div class="gip-feedback-submit-row">';
+                        html += '<button type="button" class="gip-feedback-submit-btn">送信する</button>';
+                        html += '<button type="button" class="gip-feedback-skip-btn">スキップ</button>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '<div class="gip-feedback-thanks" style="display:none;">';
+                        html += '<span class="gip-feedback-thanks-text">ご協力ありがとうございました！</span>';
                         html += '</div>';
                         html += '</div>';
                         
@@ -10519,23 +10662,48 @@ function gip_shortcode_chat_modal($atts = array()) {
                     bindModalResultsEvents: function() {
                         var chat = this;
                         
+                        // 現在のフィードバックタイプを保存
+                        var currentFeedbackType = null;
+                        
                         // フィードバックバーのクリック
                         chat.$results.off('click.gipfb').on('click.gipfb', '.gip-results-fb-btn', function() {
                             var feedback = $(this).data('feedback');
+                            currentFeedbackType = feedback;
                             $(this).addClass('selected').siblings('.gip-results-fb-btn').removeClass('selected');
                             
-                            chat.sendDetailedFeedback({
-                                feedbackType: feedback === 'positive' ? 'helpful' : 'not_helpful',
-                                rating: feedback === 'positive' ? 4 : 2
-                            });
+                            // 基本フィードバック送信
+                            chat.sendFeedback(0, feedback === 'positive' ? 'positive' : 'negative');
                             
                             var msg = feedback === 'positive' ? 'ありがとうございます！' : 'ご意見をありがとうございます。';
                             $(this).closest('.gip-results-feedback-bar').find('.gip-results-feedback-text').text(msg);
+                            
+                            // コメント入力欄を表示
+                            var $panel = $(this).closest('.gip-results-feedback-panel');
+                            $panel.find('.gip-feedback-comment-section').slideDown(200);
                         });
                         
-                        // 詳細フィードバックモーダル
-                        chat.$results.off('click.gipfbmodal').on('click.gipfbmodal', '.gip-open-feedback-modal', function() {
-                            chat.showFeedbackModal(0);
+                        // フィードバックコメント送信
+                        chat.$results.off('click.gipfbsubmit').on('click.gipfbsubmit', '.gip-feedback-submit-btn', function() {
+                            var $panel = $(this).closest('.gip-results-feedback-panel');
+                            var comment = $panel.find('.gip-feedback-comment-input').val().trim();
+                            
+                            if (comment) {
+                                chat.sendDetailedFeedback({
+                                    feedbackType: currentFeedbackType === 'positive' ? 'helpful' : 'not_helpful',
+                                    rating: currentFeedbackType === 'positive' ? 4 : 2,
+                                    comment: comment
+                                });
+                            }
+                            
+                            $panel.find('.gip-feedback-comment-section').slideUp(200);
+                            $panel.find('.gip-feedback-thanks').slideDown(200);
+                        });
+                        
+                        // フィードバックスキップ
+                        chat.$results.off('click.gipfbskip').on('click.gipfbskip', '.gip-feedback-skip-btn', function() {
+                            var $panel = $(this).closest('.gip-results-feedback-panel');
+                            $panel.find('.gip-feedback-comment-section').slideUp(200);
+                            $panel.find('.gip-feedback-thanks').slideDown(200);
                         });
                         
                         // 再調整ボタン
