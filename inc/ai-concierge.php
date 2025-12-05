@@ -8156,7 +8156,8 @@ function gip_frontend_js() {
                 return;
             }
             
-            self.$container = $('.gip-chat');
+            // モーダル内のチャット(.gip-chat--modal)は除外し、インラインチャットのみを対象にする
+            self.$container = $('.gip-chat').not('.gip-chat--modal');
             if (!self.$container.length) {
                 if (self.retryCount < self.maxRetries) {
                     self.retryCount++;
