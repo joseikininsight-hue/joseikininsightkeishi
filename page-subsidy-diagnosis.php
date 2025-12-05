@@ -4564,7 +4564,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // 再調整機能
     // ========================================
     async function readjust(adjustType, newValue) {
-        if (!chatState.sessionId || chatState.isLoading) return;
+        console.log('[GIP Debug] readjust called:', { adjustType, newValue, sessionId: chatState.sessionId, isLoading: chatState.isLoading });
+        
+        if (!chatState.sessionId) {
+            console.log('[GIP Debug] readjust: No sessionId, aborting');
+            return;
+        }
+        if (chatState.isLoading) {
+            console.log('[GIP Debug] readjust: Already loading, aborting');
+            return;
+        }
         
         chatState.isLoading = true;
         showTypingIndicator();
