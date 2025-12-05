@@ -501,3 +501,9 @@ $ai_concierge_file = get_template_directory() . '/inc/ai-concierge.php';
 if (file_exists($ai_concierge_file)) {
     require_once $ai_concierge_file;
 }
+
+// 補助金記事作成ツール読み込み
+$grant_article_creator_file = get_template_directory() . '/inc/grant-article-creator.php';
+if (file_exists($grant_article_creator_file)) {
+    require_once $grant_article_creator_file;
+}
