@@ -17,7 +17,7 @@ if (defined('GIP_LOADED')) {
 }
 define('GIP_LOADED', true);
 
-define('GIP_VERSION', '7.1.0');
+define('GIP_VERSION', '7.2.0');
 define('GIP_API_NS', 'gip/v1');
 define('GIP_PREFIX', 'gip_');
 
@@ -1059,7 +1059,15 @@ function gip_page_question_logs() {
                 $count_query = "SELECT COUNT(*) FROM {$logs_table} WHERE {$where}";
                 $filtered_total = $params ? $wpdb->get_var($wpdb->prepare($count_query, ...$params)) : $wpdb->get_var($count_query);
                 
-                $query = "SELECT * FROM {$logs_table} WHERE {$where} ORDER BY created_at DESC LIMIT {$per_page} OFFSET {$offset}";
+                // コメント情報を取得するためにLEFT JOINを追加
+                $feedbacks_table = gip_table('user_feedbacks');
+                $query = "SELECT l.*, f.comment as fb_comment, f.suggestion as fb_suggestion 
+                          FROM {$logs_table} l 
+                          LEFT JOIN {$feedbacks_table} f ON l.session_id = f.session_id 
+                          WHERE {$where} 
+                          GROUP BY l.id 
+                          ORDER BY l.created_at DESC 
+                          LIMIT {$per_page} OFFSET {$offset}";
                 $logs = $params ? $wpdb->get_results($wpdb->prepare($query, ...$params)) : $wpdb->get_results($query);
                 
                 $total_pages = ceil($filtered_total / $per_page);
@@ -1074,7 +1082,7 @@ function gip_page_question_logs() {
                             <th style="width: 80px;">地域</th>
                             <th style="width: 60px;">結果数</th>
                             <th>診断結果（補助金）</th>
-                            <th style="width: 100px;">FB</th>
+                            <th>フィードバック・コメント</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1125,9 +1133,21 @@ function gip_page_question_logs() {
                                 $fb_label = $feedback_labels[$fb] ?? $fb;
                                 $fb_color = $feedback_colors[$fb] ?? '#9ca3af';
                                 if ($fb): ?>
-                                    <span style="color: <?php echo $fb_color; ?>; font-size: 12px;"><?php echo esc_html($fb_label); ?></span>
+                                    <span style="color: <?php echo $fb_color; ?>; font-weight: 600; font-size: 12px;"><?php echo esc_html($fb_label); ?></span>
                                     <?php if ($log->satisfaction_score): ?>
                                     <br><small style="color: #6b7280;">満足度: <?php echo esc_html($log->satisfaction_score); ?>/5</small>
+                                    <?php endif; ?>
+                                    <?php if (!empty($log->fb_comment)): ?>
+                                    <div style="margin-top: 6px; padding: 8px; background: #fff; border: 1px solid #e5e5e5; border-radius: 4px; font-size: 12px;">
+                                        <strong>コメント:</strong><br>
+                                        <?php echo nl2br(esc_html($log->fb_comment)); ?>
+                                    </div>
+                                    <?php endif; ?>
+                                    <?php if (!empty($log->fb_suggestion)): ?>
+                                    <div style="margin-top: 6px; padding: 8px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px; font-size: 12px; color: #166534;">
+                                        <strong>改善案:</strong><br>
+                                        <?php echo nl2br(esc_html($log->fb_suggestion)); ?>
+                                    </div>
                                     <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #9ca3af;">-</span>
