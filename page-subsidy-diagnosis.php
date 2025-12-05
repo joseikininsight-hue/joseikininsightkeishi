@@ -4170,6 +4170,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const data = await response.json();
             
+            // デバッグ: APIレスポンス全体をログ
+            console.log('[GIP Debug] API Response:', JSON.stringify(data, null, 2));
+            
             hideTypingIndicator();
             
             if (data.success) {
@@ -4179,9 +4182,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 // AIメッセージを表示
                 addBotMessage(data.message, data.options, data.hint, data.option_type);
                 
+                // デバッグ: 結果の有無をログ
+                console.log('[GIP Debug] data.results:', data.results);
+                console.log('[GIP Debug] results count:', data.results ? data.results.length : 0);
+                
                 // 結果がある場合は表示
                 if (data.results && data.results.length > 0) {
+                    console.log('[GIP Debug] Calling addResultsMessage with', data.results.length, 'results');
                     addResultsMessage(data.results);
+                } else {
+                    console.log('[GIP Debug] No results to display');
                 }
                 
                 // 入力欄の表示/非表示
@@ -4301,6 +4311,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function addResultsMessage(results) {
+        console.log('[GIP Debug] addResultsMessage called with:', results);
+        console.log('[GIP Debug] First result:', results[0]);
+        
         const resultsDiv = document.createElement('div');
         resultsDiv.className = 'diag-popup-results';
         
@@ -4446,9 +4459,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // 結果エリアのイベントハンドラー
     // ========================================
     function bindResultsEvents(container) {
+        console.log('[GIP Debug] bindResultsEvents called');
+        console.log('[GIP Debug] Found feedback buttons:', container.querySelectorAll('.diag-results-fb-btn').length);
+        console.log('[GIP Debug] Found readjust buttons:', container.querySelectorAll('.diag-readjust-btn').length);
+        
         // フィードバックバーのクリック
         container.querySelectorAll('.diag-results-fb-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
+                console.log('[GIP Debug] Feedback button clicked');
                 const feedback = this.getAttribute('data-feedback');
                 container.querySelectorAll('.diag-results-fb-btn').forEach(function(b) {
                     b.classList.remove('selected');
@@ -4484,12 +4502,15 @@ document.addEventListener('DOMContentLoaded', function() {
         container.querySelectorAll('.diag-readjust-btn').forEach(function(btn) {
             btn.addEventListener('click', function() {
                 const adjustType = this.getAttribute('data-adjust');
+                console.log('[GIP Debug] Readjust button clicked:', adjustType);
                 
                 if (adjustType === 'restart') {
+                    console.log('[GIP Debug] Restarting chat');
                     startChat();
                 } else if (adjustType === 'change_purpose') {
                     const newPurpose = prompt('新しい目的を入力してください：');
                     if (newPurpose) {
+                        console.log('[GIP Debug] Changing purpose to:', newPurpose);
                         readjust('purpose', newPurpose);
                     }
                 } else {
@@ -4513,10 +4534,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // フィードバック送信
     // ========================================
     async function sendFeedback(grantId, feedback) {
-        if (!chatState.sessionId) return;
+        console.log('[GIP Debug] sendFeedback called:', { grantId, feedback, sessionId: chatState.sessionId });
+        if (!chatState.sessionId) {
+            console.log('[GIP Debug] sendFeedback: No session ID, aborting');
+            return;
+        }
         
         try {
-            await fetch(API_BASE + '/feedback', {
+            const response = await fetch(API_BASE + '/feedback', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -4528,9 +4553,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     feedback: feedback
                 })
             });
-            console.log('Feedback sent:', feedback, grantId);
+            const data = await response.json();
+            console.log('[GIP Debug] Feedback API response:', data);
         } catch (error) {
-            console.error('Feedback error:', error);
+            console.error('[GIP Debug] Feedback error:', error);
         }
     }
     
@@ -4558,15 +4584,21 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             const data = await response.json();
+            console.log('[GIP Debug] Readjust API Response:', JSON.stringify(data, null, 2));
             hideTypingIndicator();
             
             if (data.success) {
+                console.log('[GIP Debug] Readjust success, results:', data.results ? data.results.length : 0);
                 addBotMessage(data.message);
                 
                 if (data.results && data.results.length > 0) {
+                    console.log('[GIP Debug] Readjust: Calling addResultsMessage');
                     addResultsMessage(data.results);
+                } else {
+                    console.log('[GIP Debug] Readjust: No results to display');
                 }
             } else {
+                console.log('[GIP Debug] Readjust failed:', data.error);
                 addBotMessage('再検索中にエラーが発生しました。');
             }
         } catch (error) {
