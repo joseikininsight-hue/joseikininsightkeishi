@@ -1774,6 +1774,13 @@ function gip_rest_routes() {
         'permission_callback' => '__return_true',
     ));
     
+    // セッション全体フィードバックAPI（評価・コメント）
+    register_rest_route(GIP_API_NS, '/session-feedback', array(
+        'methods' => 'POST',
+        'callback' => 'gip_api_session_feedback',
+        'permission_callback' => '__return_true',
+    ));
+    
     gip_log('REST API routes registered: ' . GIP_API_NS);
 }
 
@@ -5348,6 +5355,106 @@ function gip_api_feedback_detailed($request) {
     return new WP_REST_Response(array(
         'success' => true,
         'message' => 'フィードバックを送信しました。ご協力ありがとうございます。',
+        'feedback_id' => $feedback_id,
+        'log_updated' => $log_updated,
+    ));
+}
+
+/**
+ * セッション全体フィードバックAPI - 診断結果への評価・コメント
+ * フロントエンドの showContinueOptions() から呼び出される
+ */
+function gip_api_session_feedback($request) {
+    global $wpdb;
+    
+    $params = $request->get_json_params();
+    $session_id = sanitize_text_field($params['session_id'] ?? '');
+    $rating = sanitize_text_field($params['rating'] ?? ''); // satisfied, neutral, unsatisfied
+    $comment = sanitize_textarea_field($params['comment'] ?? '');
+    
+    gip_log('Session feedback API called', array(
+        'session_id' => $session_id,
+        'rating' => $rating,
+        'has_comment' => !empty($comment),
+        'comment_length' => strlen($comment),
+    ));
+    
+    // セッションIDは必須、評価またはコメントのいずれかが必要
+    if (empty($session_id)) {
+        gip_log('Session feedback API: Missing session_id');
+        return new WP_REST_Response(array('success' => false, 'error' => 'セッションIDが必要です'), 400);
+    }
+    
+    if (empty($rating) && empty($comment)) {
+        gip_log('Session feedback API: No rating or comment provided');
+        return new WP_REST_Response(array('success' => false, 'error' => '評価またはコメントが必要です'), 400);
+    }
+    
+    // フィードバックテーブルが存在しなければ作成
+    if (!gip_table_exists('user_feedbacks')) {
+        gip_create_tables();
+    }
+    
+    // 評価を満足度スコアに変換 (1-5)
+    $satisfaction_map = array(
+        'satisfied' => 5,
+        'neutral' => 3,
+        'unsatisfied' => 1,
+    );
+    $satisfaction_score = isset($satisfaction_map[$rating]) ? $satisfaction_map[$rating] : null;
+    
+    // 評価をフィードバックタイプに変換
+    $feedback_type_map = array(
+        'satisfied' => 'positive',
+        'neutral' => 'neutral',
+        'unsatisfied' => 'negative',
+    );
+    $feedback_type = isset($feedback_type_map[$rating]) ? $feedback_type_map[$rating] : 'comment_only';
+    
+    // user_feedbacksテーブルにフィードバックを保存
+    $result = $wpdb->insert(
+        gip_table('user_feedbacks'),
+        array(
+            'session_id' => $session_id,
+            'grant_id' => null, // セッション全体へのフィードバック
+            'feedback_type' => $feedback_type,
+            'rating' => $satisfaction_score,
+            'comment' => $comment,
+            'suggestion' => '', // 改善案は別途
+            'user_email' => '',
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : '',
+            'created_at' => current_time('mysql'),
+        )
+    );
+    
+    $feedback_id = $wpdb->insert_id;
+    
+    gip_log('Session feedback saved to user_feedbacks', array(
+        'insert_result' => $result,
+        'feedback_id' => $feedback_id,
+        'feedback_type' => $feedback_type,
+        'satisfaction_score' => $satisfaction_score,
+    ));
+    
+    if ($result === false) {
+        gip_log('Session feedback API: Database error', array('last_error' => $wpdb->last_error));
+        return new WP_REST_Response(array('success' => false, 'error' => 'データベースエラー'), 500);
+    }
+    
+    // question_logsテーブルも更新（フィードバック情報を紐付け）
+    $log_updated = gip_update_question_log_feedback($session_id, $feedback_type, $satisfaction_score);
+    
+    gip_log('Session feedback: Question log update result', array(
+        'session_id' => $session_id,
+        'feedback_type' => $feedback_type,
+        'satisfaction_score' => $satisfaction_score,
+        'log_updated' => $log_updated,
+    ));
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'フィードバックをお送りいただきありがとうございます！',
         'feedback_id' => $feedback_id,
         'log_updated' => $log_updated,
     ));
