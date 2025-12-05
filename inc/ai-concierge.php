@@ -980,14 +980,22 @@ function gip_page_question_logs() {
                 <div style="display: flex; gap: 24px;">
                     <?php 
                     $feedback_labels = array(
+                        'positive' => '参考になった',
+                        'negative' => '期待と違った',
                         'close' => '近い（精度向上に貢献）',
                         'different' => '違う（改善が必要）',
+                        'helpful' => '役に立った',
+                        'not_helpful' => '役に立たなかった',
                         'yes' => '正解',
                         'no' => '不正解',
                     );
                     $feedback_colors = array(
+                        'positive' => '#059669',
+                        'negative' => '#dc2626',
                         'close' => '#059669',
                         'different' => '#dc2626',
+                        'helpful' => '#059669',
+                        'not_helpful' => '#dc2626',
                         'yes' => '#2563eb',
                         'no' => '#d97706',
                     );
@@ -1025,10 +1033,12 @@ function gip_page_question_logs() {
                     </select>
                     <select name="feedback" class="gip-input" style="width: auto;">
                         <option value="">全フィードバック</option>
+                        <option value="positive" <?php selected($feedback_filter, 'positive'); ?>>参考になった</option>
+                        <option value="negative" <?php selected($feedback_filter, 'negative'); ?>>期待と違った</option>
+                        <option value="helpful" <?php selected($feedback_filter, 'helpful'); ?>>役に立った</option>
+                        <option value="not_helpful" <?php selected($feedback_filter, 'not_helpful'); ?>>役に立たなかった</option>
                         <option value="close" <?php selected($feedback_filter, 'close'); ?>>近い</option>
                         <option value="different" <?php selected($feedback_filter, 'different'); ?>>違う</option>
-                        <option value="yes" <?php selected($feedback_filter, 'yes'); ?>>正解</option>
-                        <option value="no" <?php selected($feedback_filter, 'no'); ?>>不正解</option>
                     </select>
                     <button type="submit" class="gip-btn gip-btn-secondary">フィルター適用</button>
                 </form>
@@ -1058,12 +1068,13 @@ function gip_page_question_logs() {
                 <table class="wp-list-table widefat fixed striped">
                     <thead>
                         <tr>
-                            <th style="width: 140px;">日時</th>
-                            <th style="width: 100px;">カテゴリ</th>
-                            <th>目的・質問内容</th>
-                            <th style="width: 100px;">地域</th>
-                            <th style="width: 80px;">結果数</th>
-                            <th style="width: 80px;">FB</th>
+                            <th style="width: 130px;">日時</th>
+                            <th style="width: 80px;">カテゴリ</th>
+                            <th style="width: 200px;">目的・質問内容</th>
+                            <th style="width: 80px;">地域</th>
+                            <th style="width: 60px;">結果数</th>
+                            <th>診断結果（補助金）</th>
+                            <th style="width: 100px;">FB</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1071,39 +1082,60 @@ function gip_page_question_logs() {
                         <tr>
                             <td><?php echo esc_html(date('Y/m/d H:i', strtotime($log->created_at))); ?></td>
                             <td>
-                                <span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
+                                <span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 4px; font-size: 11px;">
                                     <?php echo esc_html($category_labels[$log->detected_category] ?? $log->detected_category ?? '-'); ?>
                                 </span>
                             </td>
                             <td>
-                                <strong><?php echo esc_html(mb_strimwidth($log->purpose ?? '', 0, 50, '...')); ?></strong>
+                                <strong><?php echo esc_html(mb_strimwidth($log->purpose ?? '', 0, 40, '...')); ?></strong>
                                 <?php if ($log->clarification): ?>
-                                <br><small style="color: #6b7280;"><?php echo esc_html(mb_strimwidth($log->clarification, 0, 80, '...')); ?></small>
+                                <br><small style="color: #6b7280;"><?php echo esc_html(mb_strimwidth($log->clarification, 0, 60, '...')); ?></small>
                                 <?php endif; ?>
                                 <?php if ($log->raw_input): ?>
-                                <br><small style="color: #9ca3af;"><?php echo esc_html(mb_strimwidth($log->raw_input, 0, 100, '...')); ?></small>
+                                <br><small style="color: #9ca3af;"><?php echo esc_html(mb_strimwidth($log->raw_input, 0, 80, '...')); ?></small>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo esc_html(($log->prefecture ?? '') . ' ' . ($log->municipality ?? '')); ?></td>
-                            <td style="text-align: center;"><?php echo esc_html($log->result_count ?? '-'); ?></td>
+                            <td style="font-size: 12px;"><?php echo esc_html(($log->prefecture ?? '') . ($log->municipality ? ' ' . $log->municipality : '')); ?></td>
+                            <td style="text-align: center;"><?php echo esc_html($log->result_count ?? '0'); ?></td>
+                            <td style="font-size: 12px;">
+                                <?php 
+                                if (!empty($log->result_grant_titles)) {
+                                    $titles = explode('|', $log->result_grant_titles);
+                                    $count = 0;
+                                    foreach ($titles as $title) {
+                                        if ($count >= 3) {
+                                            echo '<span style="color: #9ca3af;">他' . (count($titles) - 3) . '件...</span>';
+                                            break;
+                                        }
+                                        if ($title) {
+                                            echo '<div style="margin-bottom: 4px; padding: 2px 6px; background: #f3f4f6; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' . esc_attr($title) . '">';
+                                            echo esc_html(mb_strimwidth($title, 0, 30, '...'));
+                                            echo '</div>';
+                                            $count++;
+                                        }
+                                    }
+                                } else {
+                                    echo '<span style="color: #9ca3af;">-</span>';
+                                }
+                                ?>
+                            </td>
                             <td>
                                 <?php 
                                 $fb = $log->user_feedback;
-                                if ($fb === 'close'): ?>
-                                    <span style="color: #059669;">近い</span>
-                                <?php elseif ($fb === 'different'): ?>
-                                    <span style="color: #dc2626;">違う</span>
-                                <?php elseif ($fb === 'yes'): ?>
-                                    <span style="color: #2563eb;">正解</span>
-                                <?php elseif ($fb === 'no'): ?>
-                                    <span style="color: #d97706;">不正解</span>
+                                $fb_label = $feedback_labels[$fb] ?? $fb;
+                                $fb_color = $feedback_colors[$fb] ?? '#9ca3af';
+                                if ($fb): ?>
+                                    <span style="color: <?php echo $fb_color; ?>; font-size: 12px;"><?php echo esc_html($fb_label); ?></span>
+                                    <?php if ($log->satisfaction_score): ?>
+                                    <br><small style="color: #6b7280;">満足度: <?php echo esc_html($log->satisfaction_score); ?>/5</small>
+                                    <?php endif; ?>
                                 <?php else: ?>
                                     <span style="color: #9ca3af;">-</span>
                                 <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; else: ?>
-                        <tr><td colspan="6" style="text-align: center; padding: 24px; color: #6b7280;">質問ログがありません</td></tr>
+                        <tr><td colspan="7" style="text-align: center; padding: 24px; color: #6b7280;">質問ログがありません</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -2867,10 +2899,11 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
         $response['hint_important'] = $hint_important;
     }
     
-    // 質問ログを保存（改善分析用）
+    // 質問ログを保存（改善分析用）- 結果情報も含める
     gip_save_question_log($session_id, $collected, array(
         'detected_category' => $analysis['category'] ?? ($context['detected_category'] ?? ''),
         'result_count' => count($results ?? array()),
+        'results' => $results ?? array(),  // 診断結果の補助金情報を追加
         'raw_input' => $user_input,
     ));
     
@@ -5006,17 +5039,24 @@ function gip_api_feedback($request) {
     $grant_id = absint($params['grant_id'] ?? 0);
     $feedback = sanitize_text_field($params['feedback'] ?? '');
     
-    if (empty($session_id) || empty($grant_id) || !in_array($feedback, array('positive', 'negative'))) {
-        return new WP_REST_Response(array('success' => false), 400);
+    // セッションIDとフィードバックは必須（grant_idは0でもOK = 全体フィードバック）
+    if (empty($session_id) || !in_array($feedback, array('positive', 'negative'))) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid parameters'), 400);
     }
     
-    $wpdb->update(
-        gip_table('results'),
-        array('feedback' => $feedback),
-        array('session_id' => $session_id, 'grant_id' => $grant_id)
-    );
+    // grant_idが指定されている場合はresultsテーブルを更新
+    if ($grant_id > 0) {
+        $wpdb->update(
+            gip_table('results'),
+            array('feedback' => $feedback),
+            array('session_id' => $session_id, 'grant_id' => $grant_id)
+        );
+    }
     
-    return new WP_REST_Response(array('success' => true));
+    // question_logsテーブルも更新（全体フィードバックとして）
+    gip_update_question_log_feedback($session_id, $feedback, $feedback === 'positive' ? 4 : 2);
+    
+    return new WP_REST_Response(array('success' => true, 'updated' => true));
 }
 
 /**
