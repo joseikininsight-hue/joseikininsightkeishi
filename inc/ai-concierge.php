@@ -5574,16 +5574,11 @@ function gip_frontend_assets() {
     if (is_singular() && is_a($post, 'WP_Post')) {
         $template = get_page_template_slug($post->ID);
         
-        // page-subsidy-diagnosis.php は独自のチャットシステムを持っているため除外
-        if (strpos($template, 'page-subsidy-diagnosis') !== false) {
-            return; // このテンプレートではGIP Chatを読み込まない
-        }
-        
         if (has_shortcode($post->post_content, 'gip_chat')) {
             $should_load = true;
         }
-        // 複数のテンプレートパターンをサポート（subsidy-diagnosisは除外済み）
-        $template_patterns = array('ai-diagnosis', 'gip', 'diagnosis');
+        // 複数のテンプレートパターンをサポート
+        $template_patterns = array('ai-diagnosis', 'gip', 'diagnosis', 'subsidy-diagnosis');
         foreach ($template_patterns as $pattern) {
             if (strpos($template, $pattern) !== false) {
                 $should_load = true;
@@ -5593,13 +5588,6 @@ function gip_frontend_assets() {
     }
     
     if (is_front_page() || is_page()) {
-        // page-subsidy-diagnosis テンプレートの場合は除外
-        if (is_a($post, 'WP_Post')) {
-            $template = get_page_template_slug($post->ID);
-            if (strpos($template, 'page-subsidy-diagnosis') !== false) {
-                return;
-            }
-        }
         $should_load = true;
     }
     
