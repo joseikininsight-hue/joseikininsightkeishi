@@ -2899,13 +2899,41 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
         $response['hint_important'] = $hint_important;
     }
     
-    // 質問ログを保存（改善分析用）- 結果情報も含める
-    gip_save_question_log($session_id, $collected, array(
+    // 質問ログを保存（改善分析用）
+    // 【重要】診断完了時（resultsステップで結果がある時）のみ完全なログを保存
+    // 途中経過では不完全なログが保存されないようにする
+    $should_save_log = false;
+    $log_extra = array(
         'detected_category' => $analysis['category'] ?? ($context['detected_category'] ?? ''),
-        'result_count' => count($results ?? array()),
-        'results' => $results ?? array(),  // 診断結果の補助金情報を追加
         'raw_input' => $user_input,
-    ));
+    );
+    
+    if ($next_step === 'results' && !empty($results)) {
+        // 診断完了: 結果情報を含めてログを保存
+        $should_save_log = true;
+        $log_extra['result_count'] = count($results);
+        $log_extra['results'] = $results;
+        $log_extra['is_diagnosis_complete'] = true;
+        gip_log('Saving complete diagnosis log', array(
+            'session_id' => $session_id,
+            'result_count' => count($results),
+            'step' => $next_step,
+        ));
+    } elseif ($next_step === 'results' && empty($results)) {
+        // 結果なし: 0件の結果としてログを保存（改善分析に有用）
+        $should_save_log = true;
+        $log_extra['result_count'] = 0;
+        $log_extra['results'] = array();
+        $log_extra['is_diagnosis_complete'] = true;
+        gip_log('Saving no-result diagnosis log', array(
+            'session_id' => $session_id,
+            'step' => $next_step,
+        ));
+    }
+    
+    if ($should_save_log) {
+        gip_save_question_log($session_id, $collected, $log_extra);
+    }
     
     return $response;
 }
@@ -2915,36 +2943,75 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
 // =============================================================================
 
 /**
- * 質問ログをDBに保存（改善分析用）- 強化版
+ * 質問ログをDBに保存（改善分析用）- 強化版 v7.2.0
+ * 
+ * 【重要】この関数は診断完了時（resultsステップ）のみ呼び出されるべき
+ * 途中経過での呼び出しは不完全なログの原因となる
+ * 
+ * @param string $session_id セッションID
+ * @param array $collected 収集した情報（user_type, prefecture, municipality, purpose, clarification等）
+ * @param array $extra 追加情報（detected_category, result_count, results, raw_input, is_diagnosis_complete等）
+ * @return int|false 保存したログのID、または失敗時はfalse
  */
 function gip_save_question_log($session_id, $collected, $extra = array()) {
     global $wpdb;
     
-    // テーブルが存在しない場合は何もしない
+    gip_log('Save question log called', array(
+        'session_id' => $session_id,
+        'is_diagnosis_complete' => $extra['is_diagnosis_complete'] ?? false,
+        'result_count' => $extra['result_count'] ?? 0,
+    ));
+    
+    // テーブルが存在しない場合は作成を試みる
     if (!gip_table_exists('question_logs')) {
-        return false;
+        gip_log('Question logs table does not exist, attempting to create');
+        gip_create_tables();
+        if (!gip_table_exists('question_logs')) {
+            gip_log('Failed to create question logs table');
+            return false;
+        }
     }
     
-    // 結果の補助金情報を整理
+    // 結果の補助金情報を整理（最大20件まで保存）
     $result_grant_ids = '';
     $result_grant_titles = '';
+    $result_scores = array();
+    
     if (!empty($extra['results'])) {
         $grant_ids = array();
         $grant_titles = array();
-        foreach (array_slice($extra['results'], 0, 10) as $r) {
-            $grant_ids[] = $r['grant_id'] ?? '';
-            $grant_titles[] = $r['title'] ?? '';
+        
+        foreach (array_slice($extra['results'], 0, 20) as $r) {
+            if (!empty($r['grant_id'])) {
+                $grant_ids[] = $r['grant_id'];
+            }
+            if (!empty($r['title'])) {
+                $grant_titles[] = $r['title'];
+            }
+            if (!empty($r['score'])) {
+                $result_scores[] = array(
+                    'id' => $r['grant_id'] ?? '',
+                    'score' => $r['score'] ?? 0,
+                );
+            }
         }
+        
         $result_grant_ids = implode(',', array_filter($grant_ids));
         $result_grant_titles = implode('|', array_filter($grant_titles));
+        
+        gip_log('Processing results for log', array(
+            'grant_ids_count' => count($grant_ids),
+            'titles_count' => count($grant_titles),
+            'first_grant_id' => $grant_ids[0] ?? 'none',
+        ));
     }
     
-    // 会話履歴を取得
+    // 会話履歴を取得（最大30メッセージ、各500文字まで）
     $conversation_history = '';
     $messages_table = gip_table('messages');
     if ($wpdb->get_var("SHOW TABLES LIKE '{$messages_table}'")) {
         $messages = $wpdb->get_results($wpdb->prepare(
-            "SELECT role, content FROM {$messages_table} WHERE session_id = %s ORDER BY id ASC LIMIT 20",
+            "SELECT role, content, created_at FROM {$messages_table} WHERE session_id = %s ORDER BY id ASC LIMIT 30",
             $session_id
         ));
         if ($messages) {
@@ -2953,77 +3020,128 @@ function gip_save_question_log($session_id, $collected, $extra = array()) {
                 $history_arr[] = array(
                     'role' => $m->role,
                     'content' => mb_substr($m->content, 0, 500),
+                    'time' => $m->created_at ?? '',
                 );
             }
             $conversation_history = wp_json_encode($history_arr, JSON_UNESCAPED_UNICODE);
         }
     }
     
-    // 既に同じセッションで保存済みかチェック（重複防止）
     $logs_table = gip_table('question_logs');
-    $existing = $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$logs_table} WHERE session_id = %s AND purpose = %s ORDER BY id DESC LIMIT 1",
-        $session_id,
-        $collected['purpose'] ?? ''
+    
+    // 既に同じセッションで診断完了済みのログがあるかチェック
+    // セッションIDで検索し、診断完了済み（result_count > 0）のものを優先
+    $existing = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, result_count, user_feedback FROM {$logs_table} 
+         WHERE session_id = %s 
+         ORDER BY result_count DESC, id DESC 
+         LIMIT 1",
+        $session_id
     ));
     
-    // 同一目的のログが既にある場合は更新
+    // 既存のログがある場合
     if ($existing) {
-        $wpdb->update(
-            $logs_table,
-            array(
+        // 既存ログに結果があり、今回も結果がある場合は更新
+        // 既存ログに結果がなく、今回結果がある場合も更新（診断完了で上書き）
+        $should_update = (
+            ($extra['result_count'] ?? 0) > 0 || 
+            ($existing->result_count == 0)
+        );
+        
+        if ($should_update) {
+            $update_data = array(
                 'clarification' => $collected['clarification'] ?? '',
                 'detected_category' => $extra['detected_category'] ?? '',
                 'result_count' => $extra['result_count'] ?? 0,
                 'result_grant_ids' => $result_grant_ids,
                 'result_grant_titles' => $result_grant_titles,
-                'user_feedback' => $extra['user_feedback'] ?? null,
                 'raw_input' => $extra['raw_input'] ?? '',
                 'conversation_history' => $conversation_history,
-            ),
-            array('id' => $existing)
-        );
-        return $existing;
+            );
+            
+            // 既存のフィードバックは上書きしない
+            if (!empty($extra['user_feedback']) && empty($existing->user_feedback)) {
+                $update_data['user_feedback'] = $extra['user_feedback'];
+            }
+            
+            $result = $wpdb->update($logs_table, $update_data, array('id' => $existing->id));
+            
+            gip_log('Updated existing question log', array(
+                'log_id' => $existing->id,
+                'result_count' => $extra['result_count'] ?? 0,
+                'update_result' => $result,
+            ));
+            
+            return $existing->id;
+        }
+        
+        gip_log('Skipped log update - existing log has results', array(
+            'existing_id' => $existing->id,
+            'existing_result_count' => $existing->result_count,
+        ));
+        return $existing->id;
     }
     
     // 新規保存
-    $wpdb->insert(
-        $logs_table,
-        array(
-            'session_id' => $session_id,
-            'user_type' => $collected['user_type'] ?? '',
-            'prefecture' => $collected['prefecture'] ?? '',
-            'municipality' => $collected['municipality'] ?? '',
-            'purpose' => $collected['purpose'] ?? '',
-            'clarification' => $collected['clarification'] ?? '',
-            'detected_category' => $extra['detected_category'] ?? '',
-            'result_count' => $extra['result_count'] ?? 0,
-            'result_grant_ids' => $result_grant_ids,
-            'result_grant_titles' => $result_grant_titles,
-            'raw_input' => $extra['raw_input'] ?? '',
-            'conversation_history' => $conversation_history,
-            'created_at' => current_time('mysql'),
-        )
+    $insert_data = array(
+        'session_id' => $session_id,
+        'user_type' => $collected['user_type'] ?? '',
+        'prefecture' => $collected['prefecture'] ?? '',
+        'municipality' => $collected['municipality'] ?? '',
+        'purpose' => $collected['purpose'] ?? '',
+        'clarification' => $collected['clarification'] ?? '',
+        'detected_category' => $extra['detected_category'] ?? '',
+        'result_count' => $extra['result_count'] ?? 0,
+        'result_grant_ids' => $result_grant_ids,
+        'result_grant_titles' => $result_grant_titles,
+        'raw_input' => $extra['raw_input'] ?? '',
+        'conversation_history' => $conversation_history,
+        'created_at' => current_time('mysql'),
     );
     
-    return $wpdb->insert_id;
+    $insert_result = $wpdb->insert($logs_table, $insert_data);
+    $insert_id = $wpdb->insert_id;
+    
+    gip_log('Created new question log', array(
+        'log_id' => $insert_id,
+        'result_count' => $extra['result_count'] ?? 0,
+        'insert_result' => $insert_result,
+        'purpose' => mb_substr($collected['purpose'] ?? '', 0, 50),
+    ));
+    
+    return $insert_id;
 }
 
 /**
  * ユーザーフィードバックをログに記録
+ * 
+ * @param string $session_id セッションID
+ * @param string $feedback フィードバックタイプ (positive, negative, helpful, not_helpful, close, different)
+ * @param int|null $satisfaction 満足度スコア (1-5)
+ * @return bool 更新に成功したかどうか
  */
 function gip_update_question_log_feedback($session_id, $feedback, $satisfaction = null) {
     global $wpdb;
     
+    gip_log('Update question log feedback called', array(
+        'session_id' => $session_id,
+        'feedback' => $feedback,
+        'satisfaction' => $satisfaction,
+    ));
+    
     if (!gip_table_exists('question_logs')) {
+        gip_log('Question logs table does not exist');
         return false;
     }
     
     $logs_table = gip_table('question_logs');
     
-    // 最新のログを更新
-    $latest = $wpdb->get_var($wpdb->prepare(
-        "SELECT id FROM {$logs_table} WHERE session_id = %s ORDER BY id DESC LIMIT 1",
+    // 最新のログを検索（診断完了済みのログを優先）
+    $latest = $wpdb->get_row($wpdb->prepare(
+        "SELECT id, result_count, user_feedback FROM {$logs_table} 
+         WHERE session_id = %s 
+         ORDER BY result_count DESC, id DESC 
+         LIMIT 1",
         $session_id
     ));
     
@@ -3032,10 +3150,59 @@ function gip_update_question_log_feedback($session_id, $feedback, $satisfaction 
         if ($satisfaction !== null) {
             $update_data['satisfaction_score'] = $satisfaction;
         }
-        $wpdb->update($logs_table, $update_data, array('id' => $latest));
-        return true;
+        
+        $result = $wpdb->update($logs_table, $update_data, array('id' => $latest->id));
+        
+        gip_log('Question log feedback updated', array(
+            'log_id' => $latest->id,
+            'previous_feedback' => $latest->user_feedback,
+            'new_feedback' => $feedback,
+            'affected_rows' => $result,
+        ));
+        
+        return ($result !== false);
     }
     
+    // ログが存在しない場合、セッション情報からログを作成してフィードバックを記録
+    gip_log('No existing log found, attempting to create new log with feedback');
+    
+    $sessions_table = gip_table('sessions');
+    $session = $wpdb->get_row($wpdb->prepare(
+        "SELECT context FROM {$sessions_table} WHERE session_id = %s",
+        $session_id
+    ));
+    
+    if ($session && !empty($session->context)) {
+        $context = json_decode($session->context, true);
+        $collected = $context['collected_info'] ?? array();
+        
+        // フィードバック付きで新規ログを作成
+        $insert_result = $wpdb->insert(
+            $logs_table,
+            array(
+                'session_id' => $session_id,
+                'user_type' => $collected['user_type'] ?? '',
+                'prefecture' => $collected['prefecture'] ?? '',
+                'municipality' => $collected['municipality'] ?? '',
+                'purpose' => $collected['purpose'] ?? '',
+                'clarification' => $collected['clarification'] ?? '',
+                'detected_category' => $context['detected_category'] ?? '',
+                'result_count' => 0,
+                'user_feedback' => $feedback,
+                'satisfaction_score' => $satisfaction,
+                'created_at' => current_time('mysql'),
+            )
+        );
+        
+        gip_log('New log created with feedback', array(
+            'insert_result' => $insert_result,
+            'insert_id' => $wpdb->insert_id,
+        ));
+        
+        return ($insert_result !== false);
+    }
+    
+    gip_log('Failed to update or create feedback log - no session found');
     return false;
 }
 
@@ -5039,24 +5206,53 @@ function gip_api_feedback($request) {
     $grant_id = absint($params['grant_id'] ?? 0);
     $feedback = sanitize_text_field($params['feedback'] ?? '');
     
+    gip_log('Feedback API called', array(
+        'session_id' => $session_id,
+        'grant_id' => $grant_id,
+        'feedback' => $feedback,
+    ));
+    
     // セッションIDとフィードバックは必須（grant_idは0でもOK = 全体フィードバック）
-    if (empty($session_id) || !in_array($feedback, array('positive', 'negative'))) {
+    if (empty($session_id) || !in_array($feedback, array('positive', 'negative', 'helpful', 'not_helpful'))) {
+        gip_log('Feedback API: Invalid parameters', array('feedback' => $feedback));
         return new WP_REST_Response(array('success' => false, 'error' => 'Invalid parameters'), 400);
     }
     
+    $results_updated = false;
+    $log_updated = false;
+    
     // grant_idが指定されている場合はresultsテーブルを更新
     if ($grant_id > 0) {
-        $wpdb->update(
+        $result = $wpdb->update(
             gip_table('results'),
             array('feedback' => $feedback),
             array('session_id' => $session_id, 'grant_id' => $grant_id)
         );
+        $results_updated = ($result !== false);
+        gip_log('Feedback API: Results table update', array(
+            'affected_rows' => $result,
+            'success' => $results_updated,
+        ));
     }
     
     // question_logsテーブルも更新（全体フィードバックとして）
-    gip_update_question_log_feedback($session_id, $feedback, $feedback === 'positive' ? 4 : 2);
+    // 満足度スコアを設定: positive/helpful=4, negative/not_helpful=2
+    $satisfaction = in_array($feedback, array('positive', 'helpful')) ? 4 : 2;
+    $log_updated = gip_update_question_log_feedback($session_id, $feedback, $satisfaction);
     
-    return new WP_REST_Response(array('success' => true, 'updated' => true));
+    gip_log('Feedback API: Question log update', array(
+        'session_id' => $session_id,
+        'feedback' => $feedback,
+        'satisfaction' => $satisfaction,
+        'log_updated' => $log_updated,
+    ));
+    
+    return new WP_REST_Response(array(
+        'success' => true, 
+        'updated' => true,
+        'results_updated' => $results_updated,
+        'log_updated' => $log_updated,
+    ));
 }
 
 /**
@@ -5074,7 +5270,17 @@ function gip_api_feedback_detailed($request) {
     $suggestion = sanitize_textarea_field($params['suggestion'] ?? '');
     $user_email = sanitize_email($params['email'] ?? '');
     
+    gip_log('Detailed feedback API called', array(
+        'session_id' => $session_id,
+        'grant_id' => $grant_id,
+        'feedback_type' => $feedback_type,
+        'rating' => $rating,
+        'has_comment' => !empty($comment),
+        'has_suggestion' => !empty($suggestion),
+    ));
+    
     if (empty($session_id) || empty($feedback_type)) {
+        gip_log('Detailed feedback API: Missing required parameters');
         return new WP_REST_Response(array('success' => false, 'error' => '必須パラメータが不足しています'), 400);
     }
     
@@ -5100,17 +5306,30 @@ function gip_api_feedback_detailed($request) {
         )
     );
     
+    $feedback_id = $wpdb->insert_id;
+    
+    gip_log('Detailed feedback saved to user_feedbacks', array(
+        'insert_result' => $result,
+        'feedback_id' => $feedback_id,
+    ));
+    
     if ($result === false) {
+        gip_log('Detailed feedback API: Database error', array('last_error' => $wpdb->last_error));
         return new WP_REST_Response(array('success' => false, 'error' => 'データベースエラー'), 500);
     }
     
     // 質問ログも更新
-    gip_update_question_log_feedback($session_id, $feedback_type, $rating);
+    $log_updated = gip_update_question_log_feedback($session_id, $feedback_type, $rating > 0 ? $rating : null);
+    
+    gip_log('Detailed feedback: Question log update result', array(
+        'log_updated' => $log_updated,
+    ));
     
     return new WP_REST_Response(array(
         'success' => true,
         'message' => 'フィードバックを送信しました。ご協力ありがとうございます。',
-        'feedback_id' => $wpdb->insert_id,
+        'feedback_id' => $feedback_id,
+        'log_updated' => $log_updated,
     ));
 }
 
