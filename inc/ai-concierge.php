@@ -7871,6 +7871,101 @@ function gip_frontend_css() {
     color: var(--gip-gray-700);
 }
 
+/* フィードバック評価ボタン */
+.gip-feedback-rating {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 16px;
+}
+
+.gip-feedback-rating-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 20px;
+    background: var(--gip-white);
+    border: 2px solid var(--gip-gray-200);
+    border-radius: var(--gip-radius);
+    cursor: pointer;
+    transition: var(--gip-transition);
+    font-size: 13px;
+    color: var(--gip-gray-600);
+}
+
+.gip-feedback-rating-btn:hover {
+    border-color: var(--gip-accent);
+    background: var(--gip-gray-50);
+}
+
+.gip-feedback-rating-btn.selected {
+    border-color: var(--gip-accent);
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--gip-accent);
+}
+
+.gip-rating-icon {
+    font-size: 24px;
+    line-height: 1;
+}
+
+/* フィードバックコメント送信ボタン */
+.gip-feedback-comment-submit {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 20px;
+    background: var(--gip-accent);
+    color: var(--gip-white);
+    border: none;
+    border-radius: var(--gip-radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-comment-submit:hover {
+    background: var(--gip-gray-800);
+}
+
+.gip-feedback-comment-submit:disabled {
+    background: var(--gip-gray-300);
+    cursor: not-allowed;
+}
+
+/* フィードバックコメントヘッダー・説明 */
+.gip-feedback-comment-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.gip-feedback-comment-icon {
+    font-size: 20px;
+}
+
+.gip-feedback-comment-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gip-gray-800);
+}
+
+.gip-feedback-comment-desc {
+    font-size: 13px;
+    color: var(--gip-gray-600);
+    margin-bottom: 16px;
+}
+
+.gip-feedback-comment-note {
+    font-size: 12px;
+    color: var(--gip-gray-500);
+    margin-top: 10px;
+    text-align: center;
+}
+
 .gip-feedback-thanks {
     padding: 16px;
     background: linear-gradient(135deg, #d1fae5 0%, #f0fdf4 100%);
@@ -10042,22 +10137,34 @@ function gip_shortcode_chat_modal($atts = array()) {
                     self.open();
                 });
                 
-                // 閉じるボタン・オーバーレイのクリック
-                $(document).on('click', '[data-gip-modal-close]', function(e) {
+                // 閉じるボタンのクリック（イベント委譲で確実に動作）
+                $(document).on('click', '#gip-chat-modal .gip-modal-close, #gip-chat-modal [data-gip-modal-close]:not(.gip-modal-overlay)', function(e) {
                     e.preventDefault();
+                    e.stopPropagation();
+                    console.log('GIP Modal: Close button clicked');
+                    self.close();
+                });
+                
+                // オーバーレイのクリック（イベント委譲で確実に動作）
+                $(document).on('click', '#gip-chat-modal .gip-modal-overlay', function(e) {
+                    e.preventDefault();
+                    console.log('GIP Modal: Overlay clicked');
                     self.close();
                 });
                 
                 // ESCキーで閉じる
                 $(document).on('keydown.gipmodal', function(e) {
                     if (e.key === 'Escape' && self.isOpen) {
+                        console.log('GIP Modal: ESC key pressed');
                         self.close();
                     }
                 });
                 
-                // モーダル内クリックは伝播停止
+                // モーダル内クリックは伝播停止（閉じるボタンは除外）
                 self.$modal.find('.gip-modal-container').on('click', function(e) {
-                    e.stopPropagation();
+                    if (!$(e.target).closest('.gip-modal-close').length) {
+                        e.stopPropagation();
+                    }
                 });
                 
                 console.log('GIP Modal: Initialization complete');
@@ -10225,6 +10332,32 @@ function gip_shortcode_chat_modal($atts = array()) {
                             
                             // メッセージエリアにスクロール
                             chat.$messages[0].scrollTop = chat.$messages[0].scrollHeight;
+                        });
+                        
+                        // フィードバック評価ボタン
+                        chat.$container.off('click.gipmodal', '.gip-feedback-rating-btn').on('click.gipmodal', '.gip-feedback-rating-btn', function(e) {
+                            e.preventDefault();
+                            $(this).siblings('.gip-feedback-rating-btn').removeClass('selected');
+                            $(this).addClass('selected');
+                        });
+                        
+                        // フィードバックコメント送信
+                        chat.$container.off('click.gipmodal', '.gip-feedback-comment-submit').on('click.gipmodal', '.gip-feedback-comment-submit', function(e) {
+                            e.preventDefault();
+                            var $section = $(this).closest('.gip-feedback-comment-section');
+                            var $selectedRating = $section.find('.gip-feedback-rating-btn.selected');
+                            var rating = $selectedRating.length ? $selectedRating.data('rating') : '';
+                            var comment = $section.find('.gip-feedback-comment-input').val().trim();
+                            
+                            if (!rating && !comment) {
+                                alert('評価またはコメントを入力してください');
+                                return;
+                            }
+                            
+                            chat.sendSessionFeedback(rating, comment);
+                            
+                            // 送信完了表示
+                            $section.html('<div class="gip-feedback-success"><span class="gip-feedback-success-icon">✓</span><p>フィードバックをお送りいただきありがとうございます！</p></div>');
                         });
                     },
                     
@@ -11045,6 +11178,26 @@ function gip_shortcode_chat_modal($atts = array()) {
                     showContinueOptions: function() {
                         var chat = this;
                         
+                        // フィードバックコメントセクション
+                        var feedbackHtml = '<div class="gip-feedback-comment-section">';
+                        feedbackHtml += '<div class="gip-feedback-comment-header">';
+                        feedbackHtml += '<span class="gip-feedback-comment-icon">💬</span>';
+                        feedbackHtml += '<span class="gip-feedback-comment-title">診断結果へのフィードバック</span>';
+                        feedbackHtml += '</div>';
+                        feedbackHtml += '<p class="gip-feedback-comment-desc">診断結果はいかがでしたか？ご意見をお聞かせください。</p>';
+                        feedbackHtml += '<div class="gip-feedback-rating">';
+                        feedbackHtml += '<button type="button" class="gip-feedback-rating-btn" data-rating="satisfied"><span class="gip-rating-icon">😊</span><span>満足</span></button>';
+                        feedbackHtml += '<button type="button" class="gip-feedback-rating-btn" data-rating="neutral"><span class="gip-rating-icon">😐</span><span>普通</span></button>';
+                        feedbackHtml += '<button type="button" class="gip-feedback-rating-btn" data-rating="unsatisfied"><span class="gip-rating-icon">😞</span><span>不満</span></button>';
+                        feedbackHtml += '</div>';
+                        feedbackHtml += '<textarea class="gip-feedback-comment-input" placeholder="ご意見・ご要望があればお聞かせください（任意）" rows="3"></textarea>';
+                        feedbackHtml += '<button type="button" class="gip-feedback-comment-submit">フィードバックを送信</button>';
+                        feedbackHtml += '<p class="gip-feedback-comment-note">※ いただいたご意見はサービス改善に活用させていただきます</p>';
+                        feedbackHtml += '</div>';
+                        
+                        chat.$results.append(feedbackHtml);
+                        
+                        // 続きのオプション
                         var html = '<div class="gip-continue-chat">';
                         html += '<p class="gip-continue-title">さらに詳しく知りたいことはありますか?</p>';
                         html += '<div class="gip-continue-options">';
@@ -11074,6 +11227,36 @@ function gip_shortcode_chat_modal($atts = array()) {
                             }),
                             success: function(response) {
                                 console.log('GIP Modal Chat: Feedback sent', response);
+                            }
+                        });
+                    },
+                    
+                    // セッション全体へのフィードバック（評価・コメント）
+                    sendSessionFeedback: function(rating, comment) {
+                        var chat = this;
+                        
+                        if (!chat.sessionId) {
+                            console.warn('GIP Modal Chat: No session ID for feedback');
+                            return;
+                        }
+                        
+                        console.log('GIP Modal Chat: Sending session feedback', { rating: rating, comment: comment });
+                        
+                        $.ajax({
+                            url: GIP_CHAT.api + '/session-feedback',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            headers: { 'X-WP-Nonce': GIP_CHAT.nonce },
+                            data: JSON.stringify({
+                                session_id: chat.sessionId,
+                                rating: rating,
+                                comment: comment
+                            }),
+                            success: function(response) {
+                                console.log('GIP Modal Chat: Session feedback sent', response);
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('GIP Modal Chat: Session feedback error', error);
                             }
                         });
                     },
