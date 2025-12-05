@@ -4003,6 +4003,113 @@ html, body {
     color: var(--diag-gray-500);
 }
 
+/* ========================================
+   フィードバックコメントセクション
+   ======================================== */
+.diag-results-feedback-panel {
+    margin-bottom: 16px;
+}
+
+.diag-feedback-comment-section {
+    margin-top: 12px;
+    padding: 16px;
+    background: var(--diag-gray-50);
+    border-radius: 8px;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.diag-feedback-comment-header {
+    margin-bottom: 10px;
+}
+
+.diag-feedback-comment-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--diag-gray-700);
+}
+
+.diag-feedback-comment-input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--diag-gray-200);
+    border-radius: 6px;
+    font-family: var(--diag-font-sans);
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    min-height: 80px;
+    box-sizing: border-box;
+}
+
+.diag-feedback-comment-input:focus {
+    outline: none;
+    border-color: var(--diag-black);
+}
+
+.diag-feedback-comment-input::placeholder {
+    color: var(--diag-gray-400);
+}
+
+.diag-feedback-submit-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.diag-feedback-submit-btn {
+    flex: 1;
+    padding: 10px 16px;
+    background: var(--diag-black);
+    color: var(--diag-white);
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--diag-font-sans);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.diag-feedback-submit-btn:hover {
+    background: var(--diag-gray-800);
+}
+
+.diag-feedback-skip-btn {
+    padding: 10px 16px;
+    background: white;
+    color: var(--diag-gray-600);
+    border: 1px solid var(--diag-gray-200);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: var(--diag-font-sans);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.diag-feedback-skip-btn:hover {
+    background: var(--diag-gray-100);
+    color: var(--diag-gray-700);
+}
+
+.diag-feedback-thanks {
+    padding: 16px;
+    background: linear-gradient(135deg, #dcfce7 0%, #f0fdf4 100%);
+    border-radius: 8px;
+    text-align: center;
+    animation: fadeIn 0.3s ease;
+}
+
+.diag-feedback-thanks-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #166534;
+}
+
 /* ポップアップ モバイル対応 */
 @media (max-width: 768px) {
     .diag-chat-popup__container {
@@ -4348,8 +4455,9 @@ document.addEventListener('DOMContentLoaded', function() {
         html += '</div>';
         
         // ========================================
-        // フィードバックバー
+        // フィードバックパネル（コメント入力欄付き）
         // ========================================
+        html += '<div class="diag-results-feedback-panel">';
         html += '<div class="diag-results-feedback-bar">';
         html += '<span class="diag-results-feedback-text">この診断結果はいかがでしたか？</span>';
         html += '<div class="diag-results-feedback-btns">';
@@ -4361,6 +4469,22 @@ document.addEventListener('DOMContentLoaded', function() {
         html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
         html += '<span>期待と違った</span>';
         html += '</button>';
+        html += '</div>';
+        html += '</div>';
+        
+        // フィードバックコメント入力欄（初期状態は非表示）
+        html += '<div class="diag-feedback-comment-section" style="display:none;">';
+        html += '<div class="diag-feedback-comment-header">';
+        html += '<span class="diag-feedback-comment-label">ご意見・改善点をお聞かせください（任意）</span>';
+        html += '</div>';
+        html += '<textarea class="diag-feedback-comment-input" id="feedbackComment" rows="3" placeholder="診断結果について気になった点や、改善のご要望があればお聞かせください..."></textarea>';
+        html += '<div class="diag-feedback-submit-row">';
+        html += '<button type="button" class="diag-feedback-submit-btn" id="submitDetailedFeedback">送信する</button>';
+        html += '<button type="button" class="diag-feedback-skip-btn" id="skipDetailedFeedback">スキップ</button>';
+        html += '</div>';
+        html += '</div>';
+        html += '<div class="diag-feedback-thanks" style="display:none;">';
+        html += '<span class="diag-feedback-thanks-text">ご協力ありがとうございました！</span>';
         html += '</div>';
         html += '</div>';
         
@@ -4458,6 +4582,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // ========================================
     // 結果エリアのイベントハンドラー
     // ========================================
+    // フィードバック状態を追跡
+    let currentFeedbackType = null;
+    
     function bindResultsEvents(container) {
         console.log('[GIP Debug] bindResultsEvents called');
         console.log('[GIP Debug] Found feedback buttons:', container.querySelectorAll('.diag-results-fb-btn').length);
@@ -4468,19 +4595,59 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.addEventListener('click', function() {
                 console.log('[GIP Debug] Feedback button clicked');
                 const feedback = this.getAttribute('data-feedback');
+                currentFeedbackType = feedback;
+                
                 container.querySelectorAll('.diag-results-fb-btn').forEach(function(b) {
                     b.classList.remove('selected');
                 });
                 this.classList.add('selected');
                 
-                // フィードバック送信
+                // 基本フィードバックを即座に送信
                 sendFeedback(0, feedback);
                 
+                // メッセージを更新
                 const msg = feedback === 'positive' ? 'ありがとうございます！' : 'ご意見をありがとうございます。';
                 const textEl = container.querySelector('.diag-results-feedback-text');
                 if (textEl) textEl.textContent = msg;
+                
+                // コメント入力欄を表示
+                const commentSection = container.querySelector('.diag-feedback-comment-section');
+                if (commentSection) {
+                    commentSection.style.display = 'block';
+                }
             });
         });
+        
+        // 詳細フィードバック送信ボタン
+        const submitBtn = container.querySelector('#submitDetailedFeedback');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', function() {
+                const commentEl = container.querySelector('#feedbackComment');
+                const comment = commentEl ? commentEl.value.trim() : '';
+                
+                if (comment) {
+                    // 詳細フィードバックAPIを呼び出し
+                    sendDetailedFeedback(currentFeedbackType, comment);
+                }
+                
+                // コメントセクションを非表示、感謝メッセージを表示
+                const commentSection = container.querySelector('.diag-feedback-comment-section');
+                const thanksSection = container.querySelector('.diag-feedback-thanks');
+                if (commentSection) commentSection.style.display = 'none';
+                if (thanksSection) thanksSection.style.display = 'block';
+            });
+        }
+        
+        // スキップボタン
+        const skipBtn = container.querySelector('#skipDetailedFeedback');
+        if (skipBtn) {
+            skipBtn.addEventListener('click', function() {
+                const commentSection = container.querySelector('.diag-feedback-comment-section');
+                const thanksSection = container.querySelector('.diag-feedback-thanks');
+                if (commentSection) commentSection.style.display = 'none';
+                if (thanksSection) thanksSection.style.display = 'block';
+            });
+        }
         
         // 個別結果フィードバック
         container.querySelectorAll('.diag-feedback-btn').forEach(function(btn) {
@@ -4531,7 +4698,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // ========================================
-    // フィードバック送信
+    // フィードバック送信（基本）
     // ========================================
     async function sendFeedback(grantId, feedback) {
         console.log('[GIP Debug] sendFeedback called:', { grantId, feedback, sessionId: chatState.sessionId });
@@ -4557,6 +4724,50 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('[GIP Debug] Feedback API response:', data);
         } catch (error) {
             console.error('[GIP Debug] Feedback error:', error);
+        }
+    }
+    
+    // ========================================
+    // 詳細フィードバック送信（コメント付き）
+    // ========================================
+    async function sendDetailedFeedback(feedbackType, comment, suggestion) {
+        console.log('[GIP Debug] sendDetailedFeedback called:', { 
+            feedbackType, 
+            comment: comment ? comment.substring(0, 50) + '...' : '',
+            sessionId: chatState.sessionId 
+        });
+        
+        if (!chatState.sessionId) {
+            console.log('[GIP Debug] sendDetailedFeedback: No session ID, aborting');
+            return;
+        }
+        
+        try {
+            const response = await fetch(API_BASE + '/feedback-detailed', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                },
+                body: JSON.stringify({
+                    session_id: chatState.sessionId,
+                    grant_id: 0,
+                    feedback_type: feedbackType || 'general',
+                    rating: feedbackType === 'positive' ? 4 : 2,
+                    comment: comment || '',
+                    suggestion: suggestion || ''
+                })
+            });
+            const data = await response.json();
+            console.log('[GIP Debug] Detailed Feedback API response:', data);
+            
+            if (data.success) {
+                console.log('[GIP Debug] Detailed feedback saved successfully, feedback_id:', data.feedback_id);
+            } else {
+                console.error('[GIP Debug] Detailed feedback save failed:', data.error);
+            }
+        } catch (error) {
+            console.error('[GIP Debug] Detailed Feedback error:', error);
         }
     }
     
