@@ -5772,6 +5772,17 @@ function gip_frontend_css() {
     --gip-font-serif: "Shippori Mincho", "Yu Mincho", serif;
 }
 
+/* iOSキーボードズーム防止 - グローバルルール（16px必須） */
+.gip-chat input[type="text"],
+.gip-chat input[type="email"],
+.gip-chat input[type="tel"],
+.gip-chat input[type="number"],
+.gip-chat textarea,
+.gip-chat select {
+    font-size: 16px !important;
+    -webkit-text-size-adjust: 100%;
+}
+
 /* Gemini風 - チャットコンテナ */
 .gip-chat {
     max-width: 100%;
@@ -8429,6 +8440,10 @@ function gip_frontend_js() {
                     e.preventDefault();
                     if (!self.isLoading) {
                         var value = $(this).data('value') || $(this).text().trim();
+                        // 結果エリアを非表示にしてトークを見やすく
+                        if (self.$results && self.$results.is(':visible')) {
+                            self.$results.slideUp(300);
+                        }
                         self.sendMessage(value);
                     }
                 })
@@ -10378,6 +10393,10 @@ function gip_shortcode_chat_modal($atts = array()) {
                             e.stopPropagation();
                             if (!chat.isLoading) {
                                 var value = $(this).data('value') || $(this).text().trim();
+                                // 結果エリアを非表示にしてトークを見やすく
+                                if (chat.$results && chat.$results.is(':visible')) {
+                                    chat.$results.slideUp(300);
+                                }
                                 chat.sendMessage(value);
                             }
                         });
