@@ -8811,7 +8811,8 @@ function gip_frontend_js() {
         // 結果エリアを非表示（続行ボタン押下時などに使用）
         hideResults: function() {
             var self = this;
-            if (self.$results && self.$results.length) {
+            // 結果が表示されている場合のみ非表示処理を実行
+            if (self.$results && self.$results.length && self.$results.is(':visible')) {
                 self.$results.slideUp(300, function() {
                     // 非表示後、結果を再表示するボタンを追加
                     if (!self.$container.find('.gip-results-toggle').length) {
@@ -10701,7 +10702,8 @@ function gip_shortcode_chat_modal($atts = array()) {
                     // 結果エリアを非表示（続行ボタン押下時などに使用）
                     hideResults: function() {
                         var chat = this;
-                        if (chat.$results && chat.$results.length) {
+                        // 結果が表示されている場合のみ非表示処理を実行
+                        if (chat.$results && chat.$results.length && chat.$results.is(':visible')) {
                             chat.$results.slideUp(300, function() {
                                 // 非表示後、結果を再表示するボタンを追加
                                 if (!chat.$container.find('.gip-results-toggle').length) {
