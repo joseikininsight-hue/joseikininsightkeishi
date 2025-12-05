@@ -7553,6 +7553,199 @@ function gip_frontend_css() {
         min-height: 500px;
     }
 }
+
+/* ======================================
+   サブ結果カード・個別フィードバック
+   ====================================== */
+
+/* サブ結果グリッド */
+.gip-results-sub {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--gip-gray-200);
+}
+
+.gip-results-grid-sub {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+/* サブ結果カード（コンパクト版） */
+.gip-result-card-sub {
+    padding: 12px 16px;
+    background: var(--gip-white);
+    border: 1px solid var(--gip-gray-200);
+    border-radius: 8px;
+    transition: var(--gip-transition);
+}
+
+.gip-result-card-sub:hover {
+    border-color: var(--gip-gray-300);
+    box-shadow: var(--gip-shadow);
+}
+
+.gip-result-sub-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.gip-result-sub-rank {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gip-gray-100);
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gip-gray-600);
+}
+
+.gip-result-sub-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.gip-result-sub-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gip-gray-800);
+    margin: 0 0 4px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gip-result-sub-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: var(--gip-gray-500);
+}
+
+.gip-result-sub-amount {
+    color: var(--gip-accent);
+    font-weight: 500;
+}
+
+.gip-result-sub-score {
+    color: var(--gip-gray-500);
+}
+
+.gip-sub-ask-btn {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    background: var(--gip-gray-100);
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--gip-gray-600);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-sub-ask-btn:hover {
+    background: var(--gip-accent);
+    color: var(--gip-white);
+}
+
+/* 結果カードハイライト */
+.gip-result-card.highlight {
+    border-left: 3px solid var(--gip-accent);
+}
+
+/* スコアバッジ */
+.gip-result-score-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--gip-accent);
+    color: var(--gip-white);
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* 個別フィードバック */
+.gip-result-feedback {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--gip-gray-100);
+}
+
+.gip-result-feedback-label {
+    font-size: 12px;
+    color: var(--gip-gray-500);
+}
+
+.gip-feedback-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: var(--gip-gray-100);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--gip-gray-500);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-btn:hover {
+    background: var(--gip-gray-200);
+    color: var(--gip-gray-700);
+}
+
+.gip-feedback-btn.selected[data-feedback="positive"] {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #059669;
+}
+
+.gip-feedback-btn.selected[data-feedback="negative"] {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #dc2626;
+}
+
+/* フィードバックバーレスポンシブ */
+@media (max-width: 500px) {
+    .gip-results-feedback-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    
+    .gip-results-feedback-btns {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .gip-results-fb-btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+}
+
+/* 再調整パネルレスポンシブ */
+@media (max-width: 500px) {
+    .gip-readjust-options {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .gip-readjust-btn {
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+}
 ';
 }
 
@@ -9916,15 +10109,62 @@ function gip_shortcode_chat_modal($atts = array()) {
                         
                         var mainResults = response.main_results || chat.allResults.slice(0, 5);
                         var subResults = response.sub_results || chat.allResults.slice(5, 10);
+                        var remainingResults = chat.allResults.slice(10);
                         
                         chat.displayedCount = mainResults.length + subResults.length;
                         
-                        var html = '<div class="gip-results-header">';
+                        // 結果サマリーパネル
+                        var html = '<div class="gip-results-summary">';
+                        html += '<div class="gip-results-summary-header">';
+                        html += '<div class="gip-results-summary-icon">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>';
+                        html += '</div>';
                         html += '<div>';
-                        html += '<h3 class="gip-results-title">検索結果</h3>';
-                        html += '<p class="gip-results-count">全' + chat.allResults.length + '件の補助金が見つかりました</p>';
+                        html += '<div class="gip-results-summary-title">診断完了</div>';
+                        html += '<div class="gip-results-summary-count">' + chat.allResults.length + '件の補助金が見つかりました</div>';
+                        html += '</div>';
+                        html += '</div>';
+                        html += '<div class="gip-results-summary-info">';
+                        var totalAmount = 0;
+                        var openCount = 0;
+                        for (var k = 0; k < Math.min(5, chat.allResults.length); k++) {
+                            var amt = chat.allResults[k].max_amount_numeric || 0;
+                            if (amt > 0) totalAmount += amt;
+                            if (chat.allResults[k].application_status === 'open' || !chat.allResults[k].application_status) openCount++;
+                        }
+                        var amountDisplay = totalAmount > 100000000 ? Math.round(totalAmount / 100000000) + '億円+' : (totalAmount > 10000 ? Math.round(totalAmount / 10000) + '万円+' : '要確認');
+                        html += '<div class="gip-summary-stat"><div class="gip-summary-stat-value">' + chat.allResults.length + '</div><div class="gip-summary-stat-label">該当件数</div></div>';
+                        html += '<div class="gip-summary-stat"><div class="gip-summary-stat-value">' + openCount + '</div><div class="gip-summary-stat-label">受付中</div></div>';
+                        html += '<div class="gip-summary-stat"><div class="gip-summary-stat-value">' + amountDisplay + '</div><div class="gip-summary-stat-label">補助金額目安</div></div>';
+                        html += '</div>';
+                        html += '</div>';
+                        
+                        // フィードバックバー
+                        html += '<div class="gip-results-feedback-bar">';
+                        html += '<span class="gip-results-feedback-text">この診断結果はいかがでしたか？</span>';
+                        html += '<div class="gip-results-feedback-btns">';
+                        html += '<button type="button" class="gip-results-fb-btn positive" data-feedback="positive">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
+                        html += '参考になった';
+                        html += '</button>';
+                        html += '<button type="button" class="gip-results-fb-btn negative" data-feedback="negative">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
+                        html += '期待と違った';
+                        html += '</button>';
+                        html += '<button type="button" class="gip-open-feedback-modal">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
+                        html += '詳細を送る';
+                        html += '</button>';
+                        html += '</div>';
+                        html += '</div>';
+                        
+                        // 結果ヘッダー
+                        html += '<div class="gip-results-header">';
+                        html += '<div>';
+                        html += '<h3 class="gip-results-title">マッチした補助金</h3>';
                         html += '</div></div>';
                         
+                        // メイン結果
                         if (mainResults.length > 0) {
                             html += '<div class="gip-results-main">';
                             html += '<h4 class="gip-results-section-title">おすすめの補助金</h4>';
@@ -9935,7 +10175,350 @@ function gip_shortcode_chat_modal($atts = array()) {
                             html += '</div></div>';
                         }
                         
+                        // サブ結果
+                        if (subResults.length > 0) {
+                            html += '<div class="gip-results-sub">';
+                            html += '<h4 class="gip-results-section-title">他にもこのような補助金があります</h4>';
+                            html += '<div class="gip-results-grid gip-results-grid-sub">';
+                            for (var j = 0; j < subResults.length; j++) {
+                                html += chat.renderSubResultCard(subResults[j], j + 5);
+                            }
+                            html += '</div></div>';
+                        }
+                        
+                        // 再調整パネル
+                        html += '<div class="gip-readjust-panel">';
+                        html += '<div class="gip-readjust-header">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+                        html += '<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>';
+                        html += '</svg>';
+                        html += '<span>結果が期待と異なる場合</span>';
+                        html += '</div>';
+                        html += '<div class="gip-readjust-options">';
+                        html += '<button type="button" class="gip-readjust-btn" data-adjust="expand_area">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>';
+                        html += '地域を広げる';
+                        html += '</button>';
+                        html += '<button type="button" class="gip-readjust-btn" data-adjust="national">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+                        html += '全国で検索';
+                        html += '</button>';
+                        html += '<button type="button" class="gip-readjust-btn" data-adjust="change_purpose">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
+                        html += '目的を変更';
+                        html += '</button>';
+                        html += '<button type="button" class="gip-readjust-btn" data-adjust="restart">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>';
+                        html += '最初から';
+                        html += '</button>';
+                        html += '</div>';
+                        html += '</div>';
+                        
                         chat.$results.html(html).slideDown(300);
+                        
+                        // イベントバインド
+                        chat.bindModalResultsEvents();
+                    },
+                    
+                    // サブ結果カード
+                    renderSubResultCard: function(r, index) {
+                        var chat = this;
+                        
+                        var html = '<div class="gip-result-card gip-result-card-sub" data-grant-id="' + r.grant_id + '">';
+                        html += '<div class="gip-result-sub-content">';
+                        html += '<div class="gip-result-sub-rank">' + (index + 1) + '</div>';
+                        html += '<div class="gip-result-sub-info">';
+                        html += '<h5 class="gip-result-sub-title">' + chat.escapeHtml(r.title) + '</h5>';
+                        html += '<div class="gip-result-sub-meta">';
+                        if (r.amount_display || r.max_amount) {
+                            html += '<span class="gip-result-sub-amount">' + chat.escapeHtml(r.amount_display || r.max_amount) + '</span>';
+                        }
+                        if (r.score) {
+                            html += '<span class="gip-result-sub-score">マッチ度 ' + r.score + '点</span>';
+                        }
+                        html += '</div></div>';
+                        html += '<button type="button" class="gip-btn-ask-about gip-sub-ask-btn" data-grant-id="' + r.grant_id + '" data-title="' + chat.escapeHtml(r.title) + '">詳しく</button>';
+                        html += '</div></div>';
+                        
+                        return html;
+                    },
+                    
+                    // モーダル版の結果イベントバインド
+                    bindModalResultsEvents: function() {
+                        var chat = this;
+                        
+                        // フィードバックバーのクリック
+                        chat.$results.off('click.gipfb').on('click.gipfb', '.gip-results-fb-btn', function() {
+                            var feedback = $(this).data('feedback');
+                            $(this).addClass('selected').siblings('.gip-results-fb-btn').removeClass('selected');
+                            
+                            chat.sendDetailedFeedback({
+                                feedbackType: feedback === 'positive' ? 'helpful' : 'not_helpful',
+                                rating: feedback === 'positive' ? 4 : 2
+                            });
+                            
+                            var msg = feedback === 'positive' ? 'ありがとうございます！' : 'ご意見をありがとうございます。';
+                            $(this).closest('.gip-results-feedback-bar').find('.gip-results-feedback-text').text(msg);
+                        });
+                        
+                        // 詳細フィードバックモーダル
+                        chat.$results.off('click.gipfbmodal').on('click.gipfbmodal', '.gip-open-feedback-modal', function() {
+                            chat.showFeedbackModal(0);
+                        });
+                        
+                        // 再調整ボタン
+                        chat.$results.off('click.gipreadj').on('click.gipreadj', '.gip-readjust-btn', function() {
+                            var adjustType = $(this).data('adjust');
+                            
+                            if (adjustType === 'change_purpose') {
+                                var newPurpose = prompt('新しい目的を入力してください：');
+                                if (newPurpose) {
+                                    chat.readjust('purpose', newPurpose);
+                                }
+                            } else if (adjustType === 'restart') {
+                                chat.stepBack(99);
+                            } else {
+                                chat.readjust(adjustType, '');
+                            }
+                        });
+                    },
+                    
+                    // 詳細フィードバック送信
+                    sendDetailedFeedback: function(feedbackData) {
+                        var chat = this;
+                        
+                        if (!chat.sessionId) return;
+                        
+                        $.ajax({
+                            url: GIP_CHAT.api + '/feedback-detailed',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            headers: { 'X-WP-Nonce': GIP_CHAT.nonce },
+                            data: JSON.stringify({
+                                session_id: chat.sessionId,
+                                grant_id: feedbackData.grantId || 0,
+                                feedback_type: feedbackData.feedbackType,
+                                rating: feedbackData.rating || 0,
+                                comment: feedbackData.comment || '',
+                                suggestion: feedbackData.suggestion || '',
+                                email: feedbackData.email || ''
+                            }),
+                            success: function(response) {
+                                console.log('GIP Modal: Detailed feedback sent', response);
+                                if (response.success) {
+                                    chat.showFeedbackSuccess();
+                                }
+                            },
+                            error: function(xhr, status, error) {
+                                console.error('GIP Modal: Detailed feedback error', status, error);
+                            }
+                        });
+                    },
+                    
+                    // フィードバックモーダル表示
+                    showFeedbackModal: function(grantId) {
+                        var chat = this;
+                        
+                        var html = '<div class="gip-feedback-modal-overlay">';
+                        html += '<div class="gip-feedback-modal">';
+                        html += '<div class="gip-feedback-modal-header">';
+                        html += '<span class="gip-feedback-modal-title">診断結果へのフィードバック</span>';
+                        html += '<button type="button" class="gip-feedback-modal-close">&times;</button>';
+                        html += '</div>';
+                        html += '<div class="gip-feedback-modal-body">';
+                        
+                        html += '<div class="gip-feedback-section">';
+                        html += '<label class="gip-feedback-section-label">診断結果の満足度</label>';
+                        html += '<div class="gip-rating-stars" data-rating="0">';
+                        for (var i = 1; i <= 5; i++) {
+                            html += '<button type="button" class="gip-star-btn" data-rating="' + i + '">';
+                            html += '<svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+                            html += '</button>';
+                        }
+                        html += '</div>';
+                        html += '</div>';
+                        
+                        html += '<div class="gip-feedback-section">';
+                        html += '<label class="gip-feedback-section-label">フィードバックの種類</label>';
+                        html += '<div class="gip-feedback-types">';
+                        html += '<button type="button" class="gip-feedback-type-btn" data-type="helpful">参考になった</button>';
+                        html += '<button type="button" class="gip-feedback-type-btn" data-type="not_matched">条件に合わない</button>';
+                        html += '<button type="button" class="gip-feedback-type-btn" data-type="more_info">もっと情報がほしい</button>';
+                        html += '<button type="button" class="gip-feedback-type-btn" data-type="other">その他</button>';
+                        html += '</div>';
+                        html += '</div>';
+                        
+                        html += '<div class="gip-feedback-section">';
+                        html += '<label class="gip-feedback-section-label">コメント・改善提案</label>';
+                        html += '<textarea class="gip-feedback-textarea" placeholder="診断結果についてのご意見や、改善してほしい点があればお聞かせください..."></textarea>';
+                        html += '</div>';
+                        
+                        html += '<div class="gip-feedback-section">';
+                        html += '<label class="gip-feedback-section-label">メールアドレス（任意）</label>';
+                        html += '<input type="email" class="gip-feedback-email" placeholder="example@email.com">';
+                        html += '<div class="gip-feedback-email-note">回答が必要な場合はご入力ください</div>';
+                        html += '</div>';
+                        
+                        html += '<button type="button" class="gip-feedback-submit" data-grant-id="' + (grantId || 0) + '">フィードバックを送信</button>';
+                        html += '</div></div></div>';
+                        
+                        $('body').append(html);
+                        
+                        setTimeout(function() {
+                            $('.gip-feedback-modal-overlay').addClass('active');
+                        }, 10);
+                        
+                        chat.bindFeedbackModalEvents();
+                    },
+                    
+                    bindFeedbackModalEvents: function() {
+                        var chat = this;
+                        
+                        $(document).off('click.gipfbmodal2').on('click.gipfbmodal2', '.gip-feedback-modal-close, .gip-feedback-modal-overlay', function(e) {
+                            if (e.target === this) {
+                                chat.closeFeedbackModal();
+                            }
+                        });
+                        
+                        $(document).off('click.gipfbstar').on('click.gipfbstar', '.gip-star-btn', function() {
+                            var rating = $(this).data('rating');
+                            var $container = $(this).closest('.gip-rating-stars');
+                            $container.data('rating', rating);
+                            $container.find('.gip-star-btn').removeClass('active');
+                            $container.find('.gip-star-btn').each(function() {
+                                if ($(this).data('rating') <= rating) {
+                                    $(this).addClass('active');
+                                }
+                            });
+                        });
+                        
+                        $(document).off('click.gipfbtype').on('click.gipfbtype', '.gip-feedback-type-btn', function() {
+                            $('.gip-feedback-type-btn').removeClass('selected');
+                            $(this).addClass('selected');
+                        });
+                        
+                        $(document).off('click.gipfbsubmit').on('click.gipfbsubmit', '.gip-feedback-submit', function() {
+                            var $modal = $('.gip-feedback-modal');
+                            var rating = $modal.find('.gip-rating-stars').data('rating') || 0;
+                            var feedbackType = $modal.find('.gip-feedback-type-btn.selected').data('type') || 'general';
+                            var comment = $modal.find('.gip-feedback-textarea').val().trim();
+                            var email = $modal.find('.gip-feedback-email').val().trim();
+                            var grantId = $(this).data('grant-id');
+                            
+                            if (rating === 0 && !feedbackType && !comment) {
+                                alert('評価またはコメントを入力してください');
+                                return;
+                            }
+                            
+                            $(this).prop('disabled', true).text('送信中...');
+                            
+                            chat.sendDetailedFeedback({
+                                grantId: grantId,
+                                feedbackType: feedbackType,
+                                rating: rating,
+                                comment: comment,
+                                email: email
+                            });
+                        });
+                    },
+                    
+                    closeFeedbackModal: function() {
+                        var $overlay = $('.gip-feedback-modal-overlay');
+                        $overlay.removeClass('active');
+                        setTimeout(function() {
+                            $overlay.remove();
+                        }, 300);
+                        $(document).off('click.gipfbmodal2 click.gipfbstar click.gipfbtype click.gipfbsubmit');
+                    },
+                    
+                    showFeedbackSuccess: function() {
+                        var chat = this;
+                        var $body = $('.gip-feedback-modal-body');
+                        
+                        $body.html(
+                            '<div class="gip-feedback-success">' +
+                            '<div class="gip-feedback-success-icon">' +
+                            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                            '<path d="M20 6L9 17l-5-5"/>' +
+                            '</svg>' +
+                            '</div>' +
+                            '<div class="gip-feedback-success-title">フィードバックを受け付けました</div>' +
+                            '<div class="gip-feedback-success-text">貴重なご意見をありがとうございます。<br>サービス改善に活用させていただきます。</div>' +
+                            '</div>'
+                        );
+                        
+                        setTimeout(function() {
+                            chat.closeFeedbackModal();
+                        }, 2500);
+                    },
+                    
+                    // 戻る機能
+                    stepBack: function(stepsBack) {
+                        var chat = this;
+                        stepsBack = stepsBack || 1;
+                        
+                        if (!chat.sessionId) return;
+                        
+                        $.ajax({
+                            url: GIP_CHAT.api + '/step-back',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            headers: { 'X-WP-Nonce': GIP_CHAT.nonce },
+                            data: JSON.stringify({
+                                session_id: chat.sessionId,
+                                steps_back: stepsBack
+                            }),
+                            success: function(response) {
+                                if (response.success) {
+                                    chat.addMessage('bot', response.message);
+                                    if (response.restart) {
+                                        chat.startSession();
+                                    }
+                                }
+                            }
+                        });
+                    },
+                    
+                    // 再調整機能
+                    readjust: function(adjustType, newValue) {
+                        var chat = this;
+                        
+                        if (!chat.sessionId || !adjustType) return;
+                        
+                        chat.isLoading = true;
+                        chat.showTyping();
+                        
+                        $.ajax({
+                            url: GIP_CHAT.api + '/readjust',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            headers: { 'X-WP-Nonce': GIP_CHAT.nonce },
+                            data: JSON.stringify({
+                                session_id: chat.sessionId,
+                                adjust_type: adjustType,
+                                new_value: newValue || ''
+                            }),
+                            success: function(response) {
+                                chat.hideTyping();
+                                
+                                if (response.success) {
+                                    chat.addMessage('bot', response.message);
+                                    
+                                    if (response.results && response.results.length > 0) {
+                                        chat.allResults = response.results;
+                                        chat.displayedCount = 0;
+                                        chat.renderResults(response.show_comparison, response);
+                                    }
+                                }
+                            },
+                            error: function() {
+                                chat.hideTyping();
+                                chat.addMessage('bot', '再検索中にエラーが発生しました。');
+                            },
+                            complete: function() {
+                                chat.isLoading = false;
+                            }
+                        });
                     },
                     
                     renderResultCard: function(r, index) {
@@ -9946,11 +10529,18 @@ function gip_shortcode_chat_modal($atts = array()) {
                         else if (index === 1) rankClass = ' gip-result-rank-2';
                         else if (index === 2) rankClass = ' gip-result-rank-3';
                         
-                        var html = '<div class="gip-result-card" data-grant-id="' + r.grant_id + '">';
+                        var highlightClass = index < 3 ? ' highlight' : '';
+                        
+                        var html = '<div class="gip-result-card' + highlightClass + '" data-grant-id="' + r.grant_id + '">';
                         html += '<div class="gip-result-header">';
                         html += '<div class="gip-result-rank' + rankClass + '">' + (index + 1) + '</div>';
                         html += '<div class="gip-result-info">';
                         html += '<h4 class="gip-result-title">' + chat.escapeHtml(r.title) + '</h4>';
+                        
+                        // スコアバッジ
+                        if (r.score) {
+                            html += '<div class="gip-result-score-badge">マッチ度 ' + r.score + '点</div>';
+                        }
                         html += '</div></div>';
                         
                         html += '<div class="gip-result-body">';
@@ -9958,19 +10548,47 @@ function gip_shortcode_chat_modal($atts = array()) {
                             html += '<div class="gip-result-reason">' + chat.escapeHtml(r.reason) + '</div>';
                         }
                         
+                        // メタ情報
+                        html += '<div class="gip-result-meta">';
                         var amountDisplay = r.amount_display || r.max_amount;
                         if (amountDisplay) {
-                            html += '<div class="gip-result-meta">';
                             html += '<div class="gip-result-meta-item">';
                             html += '<span class="gip-result-meta-label">補助金額</span>';
                             html += '<span class="gip-result-meta-value">' + chat.escapeHtml(amountDisplay) + '</span>';
-                            html += '</div></div>';
+                            html += '</div>';
                         }
+                        if (r.deadline_display || r.deadline) {
+                            html += '<div class="gip-result-meta-item">';
+                            html += '<span class="gip-result-meta-label">締切</span>';
+                            html += '<span class="gip-result-meta-value">' + chat.escapeHtml(r.deadline_display || r.deadline) + '</span>';
+                            html += '</div>';
+                        }
+                        if (r.organization) {
+                            html += '<div class="gip-result-meta-item">';
+                            html += '<span class="gip-result-meta-label">実施機関</span>';
+                            html += '<span class="gip-result-meta-value">' + chat.escapeHtml(r.organization) + '</span>';
+                            html += '</div>';
+                        }
+                        html += '</div>';
                         
+                        // アクション
                         html += '<div class="gip-result-actions">';
                         html += '<a href="' + chat.escapeHtml(r.url) + '" class="gip-result-btn gip-result-btn-primary" target="_blank" rel="noopener">詳細ページを見る →</a>';
                         html += '<button type="button" class="gip-result-btn gip-result-btn-secondary gip-btn-ask-about" data-grant-id="' + r.grant_id + '" data-title="' + chat.escapeHtml(r.title) + '">この補助金について質問</button>';
-                        html += '</div></div></div>';
+                        html += '</div>';
+                        
+                        // 個別フィードバック
+                        html += '<div class="gip-result-feedback">';
+                        html += '<span class="gip-result-feedback-label">この結果は？</span>';
+                        html += '<button type="button" class="gip-feedback-btn" data-feedback="positive" data-grant-id="' + r.grant_id + '">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
+                        html += '</button>';
+                        html += '<button type="button" class="gip-feedback-btn" data-feedback="negative" data-grant-id="' + r.grant_id + '">';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
+                        html += '</button>';
+                        html += '</div>';
+                        
+                        html += '</div></div>';
                         
                         return html;
                     },
@@ -9983,6 +10601,7 @@ function gip_shortcode_chat_modal($atts = array()) {
                         html += '<div class="gip-continue-options">';
                         html += '<button type="button" class="gip-option-btn gip-continue-btn" data-value="1位の補助金について詳しく教えてください">1位の補助金について詳しく</button>';
                         html += '<button type="button" class="gip-option-btn gip-continue-btn" data-value="申請方法を教えてください">申請方法を教えて</button>';
+                        html += '<button type="button" class="gip-option-btn gip-continue-btn" data-value="必要書類を教えてください">必要書類を教えて</button>';
                         html += '<button type="button" class="gip-option-btn gip-continue-btn" data-value="条件を変えて他の補助金も探したい">他の補助金も探す</button>';
                         html += '</div></div>';
                         
