@@ -5973,6 +5973,36 @@ function gip_frontend_css() {
     color: var(--gip-white);
 }
 
+/* 前に戻るボタン */
+.gip-back-btn-wrap {
+    margin-top: 12px;
+    text-align: left;
+}
+
+.gip-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    background: transparent;
+    border: 1px solid var(--gip-gray-300);
+    border-radius: var(--gip-radius);
+    font-size: 13px;
+    color: var(--gip-gray-600);
+    cursor: pointer;
+    transition: all var(--gip-transition);
+}
+
+.gip-back-btn:hover {
+    background: var(--gip-gray-100);
+    border-color: var(--gip-gray-400);
+    color: var(--gip-gray-700);
+}
+
+.gip-back-btn svg {
+    flex-shrink: 0;
+}
+
 /* Gemini風 - セレクトボックス */
 .gip-select-wrap {
     margin-top: 16px;
@@ -8360,6 +8390,7 @@ function gip_frontend_js() {
         initialized: false,
         retryCount: 0,
         maxRetries: 3,
+        messageCount: 0,
         
         init: function() {
             var self = this;
@@ -8511,6 +8542,12 @@ function gip_frontend_js() {
                     var message = '「' + title + '」について詳しく教えてください。';
                     self.sendMessage(message);
                     $('html, body').animate({ scrollTop: self.$messages.offset().top - 100 }, 500);
+                })
+                .on('click.gip', '.gip-back-btn', function(e) {
+                    e.preventDefault();
+                    if (!self.isLoading) {
+                        self.stepBack(1);
+                    }
                 });
             
             // ESCキーでモーダルを閉じる
@@ -8898,6 +8935,7 @@ function gip_frontend_js() {
             html += '</div></div>';
             
             self.$messages.append(html);
+            self.messageCount++;
             self.scrollToBottom();
         },
         
@@ -8941,6 +8979,15 @@ function gip_frontend_js() {
                     html += '<button type="button" class="gip-option-btn" data-value="' + self.escapeHtml(opt.label) + '">' + self.escapeHtml(opt.label) + '</button>';
                 }
                 html += '</div>';
+            }
+            
+            // 前の質問に戻るボタン（最初の質問以外で表示）
+            if (self.messageCount > 1) {
+                html += '<div class="gip-back-btn-wrap">';
+                html += '<button type="button" class="gip-back-btn">';
+                html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
+                html += '前の質問に戻る';
+                html += '</button></div>';
             }
             
             $lastMessage.append(html);
@@ -9189,6 +9236,11 @@ function gip_frontend_js() {
             // 再調整ボタン
             self.$results.off('click.gipreadj').on('click.gipreadj', '.gip-readjust-btn', function() {
                 var adjustType = $(this).data('adjust');
+                
+                // 結果エリアを非表示にしてトークを見やすく
+                if (self.$results && self.$results.is(':visible')) {
+                    self.$results.slideUp(300);
+                }
                 
                 if (adjustType === 'change_purpose') {
                     var newPurpose = prompt('新しい目的を入力してください：');
@@ -10334,6 +10386,7 @@ function gip_shortcode_chat_modal($atts = array()) {
                     selectedForCompare: [],
                     canContinue: false,
                     allowInput: false,
+                    messageCount: 0,
                     
                     $container: $modalChat,
                     $messages: $modalChat.find('.gip-chat-messages'),
@@ -10458,6 +10511,14 @@ function gip_shortcode_chat_modal($atts = array()) {
                             
                             // メッセージエリアにスクロール
                             chat.$messages[0].scrollTop = chat.$messages[0].scrollHeight;
+                        });
+                        
+                        // 前の質問に戻るボタン
+                        chat.$container.off('click.gipmodal', '.gip-back-btn').on('click.gipmodal', '.gip-back-btn', function(e) {
+                            e.preventDefault();
+                            if (!chat.isLoading) {
+                                chat.stepBack(1);
+                            }
                         });
                         
                         // フィードバック評価ボタン
@@ -10681,6 +10742,7 @@ function gip_shortcode_chat_modal($atts = array()) {
                         html += '</div></div>';
                         
                         chat.$messages.append(html);
+                        chat.messageCount++;
                         chat.scrollToBottom();
                     },
                     
@@ -10723,6 +10785,15 @@ function gip_shortcode_chat_modal($atts = array()) {
                                 html += '<button type="button" class="gip-option-btn" data-value="' + chat.escapeHtml(opt.label) + '">' + chat.escapeHtml(opt.label) + '</button>';
                             }
                             html += '</div>';
+                        }
+                        
+                        // 前の質問に戻るボタン（最初の質問以外で表示）
+                        if (chat.messageCount > 1) {
+                            html += '<div class="gip-back-btn-wrap">';
+                            html += '<button type="button" class="gip-back-btn">';
+                            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
+                            html += '前の質問に戻る';
+                            html += '</button></div>';
                         }
                         
                         $lastMessage.append(html);
@@ -10977,6 +11048,11 @@ function gip_shortcode_chat_modal($atts = array()) {
                         // 再調整ボタン
                         chat.$results.off('click.gipreadj').on('click.gipreadj', '.gip-readjust-btn', function() {
                             var adjustType = $(this).data('adjust');
+                            
+                            // 結果エリアを非表示にしてトークを見やすく
+                            if (chat.$results && chat.$results.is(':visible')) {
+                                chat.$results.slideUp(300);
+                            }
                             
                             if (adjustType === 'change_purpose') {
                                 var newPurpose = prompt('新しい目的を入力してください：');
