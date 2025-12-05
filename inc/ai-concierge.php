@@ -390,7 +390,7 @@ function gip_create_tables() {
         KEY content_hash (content_hash)
     ) $charset;");
     
-    // 質問ログテーブル（改善分析用）
+    // 質問ログテーブル（改善分析用）- 強化版
     dbDelta("CREATE TABLE " . gip_table('question_logs') . " (
         id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
         session_id varchar(64) NOT NULL,
@@ -402,15 +402,52 @@ function gip_create_tables() {
         detected_category varchar(50),
         matched_grant_id bigint(20) unsigned,
         result_count int(5) DEFAULT 0,
+        result_grant_ids text,
+        result_grant_titles text,
         user_feedback varchar(20),
         satisfaction_score int(2),
         raw_input text,
+        conversation_history longtext,
         created_at datetime DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         KEY session_id (session_id),
         KEY detected_category (detected_category),
         KEY created_at (created_at),
         KEY user_feedback (user_feedback)
+    ) $charset;");
+    
+    // ユーザーフィードバックテーブル（改善コメント保存用）
+    dbDelta("CREATE TABLE " . gip_table('user_feedbacks') . " (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        session_id varchar(64) NOT NULL,
+        grant_id bigint(20) unsigned,
+        feedback_type varchar(20) NOT NULL,
+        rating int(2),
+        comment text,
+        suggestion text,
+        user_email varchar(255),
+        ip_address varchar(45),
+        user_agent varchar(255),
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY session_id (session_id),
+        KEY grant_id (grant_id),
+        KEY feedback_type (feedback_type),
+        KEY created_at (created_at)
+    ) $charset;");
+    
+    // 会話履歴テーブル（戻る機能用）
+    dbDelta("CREATE TABLE " . gip_table('conversation_states') . " (
+        id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+        session_id varchar(64) NOT NULL,
+        step_number int(3) NOT NULL,
+        step_name varchar(50) NOT NULL,
+        context_snapshot longtext NOT NULL,
+        user_input text,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        KEY session_id (session_id),
+        KEY step_number (step_number)
     ) $charset;");
     
     update_option('gip_db_version', GIP_VERSION);
@@ -1664,6 +1701,27 @@ function gip_rest_routes() {
         'permission_callback' => '__return_true',
     ));
     
+    // 詳細フィードバック（改善コメント付き）
+    register_rest_route(GIP_API_NS, '/feedback-detailed', array(
+        'methods' => 'POST',
+        'callback' => 'gip_api_feedback_detailed',
+        'permission_callback' => '__return_true',
+    ));
+    
+    // 戻る機能用API
+    register_rest_route(GIP_API_NS, '/step-back', array(
+        'methods' => 'POST',
+        'callback' => 'gip_api_step_back',
+        'permission_callback' => '__return_true',
+    ));
+    
+    // 再調整機能用API
+    register_rest_route(GIP_API_NS, '/readjust', array(
+        'methods' => 'POST',
+        'callback' => 'gip_api_readjust',
+        'permission_callback' => '__return_true',
+    ));
+    
     gip_log('REST API routes registered: ' . GIP_API_NS);
 }
 
@@ -2755,6 +2813,9 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
         array('session_id' => $session_id)
     );
     
+    // 会話状態を保存（戻る機能用）
+    gip_save_conversation_state($session_id, $next_step, $context, $user_input);
+    
     // AI応答保存
     $wpdb->insert(gip_table('messages'), array(
         'session_id' => $session_id,
@@ -2821,7 +2882,7 @@ function gip_process_natural_conversation($session_id, $context, $user_input, $s
 // =============================================================================
 
 /**
- * 質問ログをDBに保存（改善分析用）
+ * 質問ログをDBに保存（改善分析用）- 強化版
  */
 function gip_save_question_log($session_id, $collected, $extra = array()) {
     global $wpdb;
@@ -2829,6 +2890,40 @@ function gip_save_question_log($session_id, $collected, $extra = array()) {
     // テーブルが存在しない場合は何もしない
     if (!gip_table_exists('question_logs')) {
         return false;
+    }
+    
+    // 結果の補助金情報を整理
+    $result_grant_ids = '';
+    $result_grant_titles = '';
+    if (!empty($extra['results'])) {
+        $grant_ids = array();
+        $grant_titles = array();
+        foreach (array_slice($extra['results'], 0, 10) as $r) {
+            $grant_ids[] = $r['grant_id'] ?? '';
+            $grant_titles[] = $r['title'] ?? '';
+        }
+        $result_grant_ids = implode(',', array_filter($grant_ids));
+        $result_grant_titles = implode('|', array_filter($grant_titles));
+    }
+    
+    // 会話履歴を取得
+    $conversation_history = '';
+    $messages_table = gip_table('messages');
+    if ($wpdb->get_var("SHOW TABLES LIKE '{$messages_table}'")) {
+        $messages = $wpdb->get_results($wpdb->prepare(
+            "SELECT role, content FROM {$messages_table} WHERE session_id = %s ORDER BY id ASC LIMIT 20",
+            $session_id
+        ));
+        if ($messages) {
+            $history_arr = array();
+            foreach ($messages as $m) {
+                $history_arr[] = array(
+                    'role' => $m->role,
+                    'content' => mb_substr($m->content, 0, 500),
+                );
+            }
+            $conversation_history = wp_json_encode($history_arr, JSON_UNESCAPED_UNICODE);
+        }
     }
     
     // 既に同じセッションで保存済みかチェック（重複防止）
@@ -2847,8 +2942,11 @@ function gip_save_question_log($session_id, $collected, $extra = array()) {
                 'clarification' => $collected['clarification'] ?? '',
                 'detected_category' => $extra['detected_category'] ?? '',
                 'result_count' => $extra['result_count'] ?? 0,
+                'result_grant_ids' => $result_grant_ids,
+                'result_grant_titles' => $result_grant_titles,
                 'user_feedback' => $extra['user_feedback'] ?? null,
                 'raw_input' => $extra['raw_input'] ?? '',
+                'conversation_history' => $conversation_history,
             ),
             array('id' => $existing)
         );
@@ -2867,7 +2965,10 @@ function gip_save_question_log($session_id, $collected, $extra = array()) {
             'clarification' => $collected['clarification'] ?? '',
             'detected_category' => $extra['detected_category'] ?? '',
             'result_count' => $extra['result_count'] ?? 0,
+            'result_grant_ids' => $result_grant_ids,
+            'result_grant_titles' => $result_grant_titles,
             'raw_input' => $extra['raw_input'] ?? '',
+            'conversation_history' => $conversation_history,
             'created_at' => current_time('mysql'),
         )
     );
@@ -4918,6 +5019,290 @@ function gip_api_feedback($request) {
     return new WP_REST_Response(array('success' => true));
 }
 
+/**
+ * 詳細フィードバックAPI - 改善コメント付き
+ */
+function gip_api_feedback_detailed($request) {
+    global $wpdb;
+    
+    $params = $request->get_json_params();
+    $session_id = sanitize_text_field($params['session_id'] ?? '');
+    $grant_id = absint($params['grant_id'] ?? 0);
+    $feedback_type = sanitize_text_field($params['feedback_type'] ?? '');
+    $rating = absint($params['rating'] ?? 0);
+    $comment = sanitize_textarea_field($params['comment'] ?? '');
+    $suggestion = sanitize_textarea_field($params['suggestion'] ?? '');
+    $user_email = sanitize_email($params['email'] ?? '');
+    
+    if (empty($session_id) || empty($feedback_type)) {
+        return new WP_REST_Response(array('success' => false, 'error' => '必須パラメータが不足しています'), 400);
+    }
+    
+    // フィードバックテーブルが存在しなければ作成
+    if (!gip_table_exists('user_feedbacks')) {
+        gip_create_tables();
+    }
+    
+    // フィードバックを保存
+    $result = $wpdb->insert(
+        gip_table('user_feedbacks'),
+        array(
+            'session_id' => $session_id,
+            'grant_id' => $grant_id > 0 ? $grant_id : null,
+            'feedback_type' => $feedback_type,
+            'rating' => $rating > 0 ? $rating : null,
+            'comment' => $comment,
+            'suggestion' => $suggestion,
+            'user_email' => $user_email,
+            'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? substr($_SERVER['HTTP_USER_AGENT'], 0, 255) : '',
+            'created_at' => current_time('mysql'),
+        )
+    );
+    
+    if ($result === false) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'データベースエラー'), 500);
+    }
+    
+    // 質問ログも更新
+    gip_update_question_log_feedback($session_id, $feedback_type, $rating);
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => 'フィードバックを送信しました。ご協力ありがとうございます。',
+        'feedback_id' => $wpdb->insert_id,
+    ));
+}
+
+/**
+ * ステップバック（戻る）API
+ */
+function gip_api_step_back($request) {
+    global $wpdb;
+    
+    $params = $request->get_json_params();
+    $session_id = sanitize_text_field($params['session_id'] ?? '');
+    $steps_back = absint($params['steps_back'] ?? 1);
+    
+    if (empty($session_id)) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'セッションIDが必要です'), 400);
+    }
+    
+    // 会話履歴テーブルが存在しなければ作成
+    if (!gip_table_exists('conversation_states')) {
+        gip_create_tables();
+    }
+    
+    // 現在のセッション情報を取得
+    $session = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM " . gip_table('sessions') . " WHERE session_id = %s",
+        $session_id
+    ));
+    
+    if (!$session) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'セッションが見つかりません'), 404);
+    }
+    
+    // 過去の状態を取得
+    $states_table = gip_table('conversation_states');
+    $previous_state = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM {$states_table} 
+         WHERE session_id = %s 
+         ORDER BY step_number DESC 
+         LIMIT 1 OFFSET %d",
+        $session_id,
+        $steps_back
+    ));
+    
+    if (!$previous_state) {
+        // 最初のステップに戻る
+        $context = array('step' => 'init', 'understanding_level' => 0, 'collected_info' => array());
+        $wpdb->update(
+            gip_table('sessions'),
+            array('context' => wp_json_encode($context)),
+            array('session_id' => $session_id)
+        );
+        
+        return new WP_REST_Response(array(
+            'success' => true,
+            'message' => '最初のステップに戻りました',
+            'step' => 'init',
+            'context' => $context,
+            'restart' => true,
+        ));
+    }
+    
+    // 過去の状態を復元
+    $restored_context = json_decode($previous_state->context_snapshot, true);
+    
+    $wpdb->update(
+        gip_table('sessions'),
+        array('context' => $previous_state->context_snapshot),
+        array('session_id' => $session_id)
+    );
+    
+    // それ以降の状態を削除
+    $wpdb->query($wpdb->prepare(
+        "DELETE FROM {$states_table} WHERE session_id = %s AND step_number > %d",
+        $session_id,
+        $previous_state->step_number - $steps_back
+    ));
+    
+    return new WP_REST_Response(array(
+        'success' => true,
+        'message' => '前のステップに戻りました',
+        'step' => $restored_context['step'] ?? 'init',
+        'context' => $restored_context,
+        'restart' => false,
+    ));
+}
+
+/**
+ * 再調整API - 条件を変更して再検索
+ */
+function gip_api_readjust($request) {
+    global $wpdb;
+    
+    $params = $request->get_json_params();
+    $session_id = sanitize_text_field($params['session_id'] ?? '');
+    $adjust_type = sanitize_text_field($params['adjust_type'] ?? '');
+    $new_value = sanitize_text_field($params['new_value'] ?? '');
+    
+    if (empty($session_id) || empty($adjust_type)) {
+        return new WP_REST_Response(array('success' => false, 'error' => '必須パラメータが不足しています'), 400);
+    }
+    
+    // セッション情報を取得
+    $session = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM " . gip_table('sessions') . " WHERE session_id = %s",
+        $session_id
+    ));
+    
+    if (!$session) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'セッションが見つかりません'), 404);
+    }
+    
+    $context = json_decode($session->context, true) ?: array();
+    $collected = $context['collected_info'] ?? array();
+    
+    // 調整タイプに応じて情報を更新
+    switch ($adjust_type) {
+        case 'prefecture':
+            $prefecture = gip_normalize_prefecture($new_value);
+            if ($prefecture) {
+                $collected['prefecture'] = $prefecture;
+                $collected['municipality'] = ''; // 都道府県変更時は市区町村をクリア
+            }
+            break;
+            
+        case 'municipality':
+            $collected['municipality'] = $new_value;
+            break;
+            
+        case 'purpose':
+            $collected['purpose'] = $new_value;
+            $collected['clarification'] = ''; // 目的変更時は詳細をクリア
+            break;
+            
+        case 'user_type':
+            $user_type = gip_normalize_user_type($new_value);
+            $collected['user_type'] = $user_type;
+            $collected['user_type_label'] = gip_get_user_type_label($user_type);
+            break;
+            
+        case 'clarification':
+            $collected['clarification'] = ($collected['clarification'] ?? '') . ' ' . $new_value;
+            break;
+            
+        case 'expand_area':
+            // 地域を広げる
+            $collected['municipality'] = '';
+            break;
+            
+        case 'national':
+            // 全国検索
+            $collected['prefecture'] = '';
+            $collected['municipality'] = '';
+            break;
+    }
+    
+    // コンテキストを更新
+    $context['collected_info'] = $collected;
+    $context['step'] = 'searching';
+    
+    $wpdb->update(
+        gip_table('sessions'),
+        array('context' => wp_json_encode($context)),
+        array('session_id' => $session_id)
+    );
+    
+    // 再検索実行
+    $filters = array(
+        'user_type' => $collected['user_type'] ?? '',
+        'prefecture' => $collected['prefecture'] ?? '',
+        'municipality' => $collected['municipality'] ?? '',
+        'status_open' => true,
+    );
+    
+    $results = gip_execute_match($session_id, gip_build_natural_search_query($collected), $filters, $collected);
+    
+    $message = '条件を変更して再検索しました。';
+    if (!empty($results)) {
+        $message .= "\n\n【" . count($results) . "件】の補助金が見つかりました。";
+    } else {
+        $message .= "\n\n条件に合う補助金が見つかりませんでした。";
+    }
+    
+    // 応答にコンテキスト情報を追加（UIで検索条件を表示するため）
+    return new WP_REST_Response(array(
+        'success' => true,
+        'session_id' => $session_id,
+        'message' => $message,
+        'results' => $results,
+        'results_count' => count($results),
+        'context' => $context,
+        'collected_info' => $collected,
+        'can_continue' => !empty($results),
+        'show_comparison' => !empty($results),
+        'show_research_option' => true,
+    ));
+}
+
+/**
+ * 会話状態を保存（戻る機能用）
+ */
+function gip_save_conversation_state($session_id, $step_name, $context, $user_input = '') {
+    global $wpdb;
+    
+    if (!gip_table_exists('conversation_states')) {
+        return false;
+    }
+    
+    $states_table = gip_table('conversation_states');
+    
+    // 現在の最大ステップ番号を取得
+    $max_step = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT MAX(step_number) FROM {$states_table} WHERE session_id = %s",
+        $session_id
+    ));
+    
+    $new_step = $max_step + 1;
+    
+    $wpdb->insert(
+        $states_table,
+        array(
+            'session_id' => $session_id,
+            'step_number' => $new_step,
+            'step_name' => $step_name,
+            'context_snapshot' => wp_json_encode($context),
+            'user_input' => $user_input,
+            'created_at' => current_time('mysql'),
+        )
+    );
+    
+    return $new_step;
+}
+
 // =============================================================================
 // Frontend Assets
 // =============================================================================
@@ -6604,6 +6989,570 @@ function gip_frontend_css() {
         page-break-inside: avoid;
     }
 }
+
+/* ======================================
+   戻る機能・再調整機能・詳細フィードバックUI
+   ====================================== */
+
+/* 戻るボタン - チャットヘッダー内 */
+.gip-step-back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--gip-gray-100);
+    border: 1px solid var(--gip-gray-300);
+    border-radius: 20px;
+    font-size: 12px;
+    color: var(--gip-gray-600);
+    cursor: pointer;
+    transition: var(--gip-transition);
+    margin-left: auto;
+}
+
+.gip-step-back-btn:hover {
+    background: var(--gip-gray-200);
+    color: var(--gip-gray-700);
+}
+
+.gip-step-back-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gip-step-back-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* 進捗バー */
+.gip-progress-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--gip-gray-50);
+    border-bottom: 1px solid var(--gip-gray-200);
+    font-size: 12px;
+    color: var(--gip-gray-600);
+}
+
+.gip-progress-steps {
+    display: flex;
+    gap: 4px;
+}
+
+.gip-progress-step {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gip-gray-300);
+    transition: var(--gip-transition);
+}
+
+.gip-progress-step.active {
+    background: var(--gip-accent);
+}
+
+.gip-progress-step.completed {
+    background: #10b981;
+}
+
+.gip-progress-label {
+    flex: 1;
+    text-align: center;
+}
+
+/* 再調整パネル */
+.gip-readjust-panel {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: var(--gip-radius);
+    padding: 16px;
+    margin: 12px 0;
+    border: 1px solid var(--gip-gray-200);
+}
+
+.gip-readjust-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--gip-gray-700);
+}
+
+.gip-readjust-header svg {
+    width: 18px;
+    height: 18px;
+    color: var(--gip-accent);
+}
+
+.gip-readjust-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+.gip-readjust-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--gip-white);
+    border: 1px solid var(--gip-gray-300);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--gip-gray-700);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-readjust-btn:hover {
+    background: var(--gip-accent-light);
+    border-color: var(--gip-accent);
+    color: var(--gip-accent);
+}
+
+.gip-readjust-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* 詳細フィードバックモーダル */
+.gip-feedback-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100001;
+    opacity: 0;
+    visibility: hidden;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.gip-feedback-modal {
+    background: var(--gip-white);
+    border-radius: var(--gip-radius-lg);
+    max-width: 440px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: var(--gip-shadow-lg);
+    transform: scale(0.95) translateY(20px);
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-modal-overlay.active .gip-feedback-modal {
+    transform: scale(1) translateY(0);
+}
+
+.gip-feedback-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--gip-gray-200);
+}
+
+.gip-feedback-modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--gip-gray-800);
+}
+
+.gip-feedback-modal-close {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    color: var(--gip-gray-500);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-modal-close:hover {
+    background: var(--gip-gray-100);
+    color: var(--gip-gray-700);
+}
+
+.gip-feedback-modal-body {
+    padding: 20px;
+}
+
+/* 評価セクション */
+.gip-feedback-section {
+    margin-bottom: 20px;
+}
+
+.gip-feedback-section-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gip-gray-700);
+    margin-bottom: 8px;
+}
+
+/* 星評価 */
+.gip-rating-stars {
+    display: flex;
+    gap: 8px;
+}
+
+.gip-star-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gip-gray-100);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-star-btn svg {
+    width: 24px;
+    height: 24px;
+    fill: var(--gip-gray-300);
+    stroke: var(--gip-gray-400);
+    transition: var(--gip-transition);
+}
+
+.gip-star-btn:hover svg,
+.gip-star-btn.active svg {
+    fill: #fbbf24;
+    stroke: #f59e0b;
+}
+
+.gip-star-btn.active {
+    border-color: #fbbf24;
+    background: #fef3c7;
+}
+
+/* フィードバックタイプ選択 */
+.gip-feedback-types {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.gip-feedback-type-btn {
+    padding: 8px 16px;
+    background: var(--gip-gray-100);
+    border: 2px solid transparent;
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--gip-gray-600);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-type-btn:hover {
+    background: var(--gip-gray-200);
+}
+
+.gip-feedback-type-btn.selected {
+    background: var(--gip-accent-light);
+    border-color: var(--gip-accent);
+    color: var(--gip-accent);
+}
+
+/* テキストエリア */
+.gip-feedback-textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 12px;
+    border: 1px solid var(--gip-gray-300);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-textarea:focus {
+    outline: none;
+    border-color: var(--gip-accent);
+    box-shadow: 0 0 0 3px rgba(31, 31, 31, 0.1);
+}
+
+.gip-feedback-textarea::placeholder {
+    color: var(--gip-gray-400);
+}
+
+/* メール入力 */
+.gip-feedback-email {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--gip-gray-300);
+    border-radius: 8px;
+    font-size: 14px;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-email:focus {
+    outline: none;
+    border-color: var(--gip-accent);
+}
+
+.gip-feedback-email-note {
+    font-size: 11px;
+    color: var(--gip-gray-500);
+    margin-top: 4px;
+}
+
+/* 送信ボタン */
+.gip-feedback-submit {
+    width: 100%;
+    padding: 14px;
+    background: var(--gip-accent);
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--gip-white);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-feedback-submit:hover {
+    background: var(--gip-gray-800);
+}
+
+.gip-feedback-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* フィードバック完了メッセージ */
+.gip-feedback-success {
+    text-align: center;
+    padding: 30px 20px;
+}
+
+.gip-feedback-success-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 16px;
+    background: #d1fae5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gip-feedback-success-icon svg {
+    width: 32px;
+    height: 32px;
+    color: #10b981;
+}
+
+.gip-feedback-success-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--gip-gray-800);
+    margin-bottom: 8px;
+}
+
+.gip-feedback-success-text {
+    font-size: 14px;
+    color: var(--gip-gray-600);
+}
+
+/* 結果サマリーパネル */
+.gip-results-summary {
+    background: linear-gradient(135deg, var(--gip-accent) 0%, var(--gip-gray-800) 100%);
+    color: var(--gip-white);
+    border-radius: var(--gip-radius);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.gip-results-summary-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.gip-results-summary-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gip-results-summary-icon svg {
+    width: 28px;
+    height: 28px;
+}
+
+.gip-results-summary-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.gip-results-summary-count {
+    font-size: 14px;
+    opacity: 0.9;
+}
+
+.gip-results-summary-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.gip-summary-stat {
+    text-align: center;
+}
+
+.gip-summary-stat-value {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.gip-summary-stat-label {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+/* 診断結果フィードバックボタン群 */
+.gip-results-feedback-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--gip-gray-50);
+    border-radius: var(--gip-radius);
+    margin-bottom: 16px;
+}
+
+.gip-results-feedback-text {
+    font-size: 13px;
+    color: var(--gip-gray-600);
+}
+
+.gip-results-feedback-btns {
+    display: flex;
+    gap: 8px;
+}
+
+.gip-results-fb-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 14px;
+    background: var(--gip-white);
+    border: 1px solid var(--gip-gray-300);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--gip-gray-600);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-results-fb-btn:hover {
+    background: var(--gip-gray-100);
+}
+
+.gip-results-fb-btn.positive:hover {
+    background: #d1fae5;
+    border-color: #10b981;
+    color: #059669;
+}
+
+.gip-results-fb-btn.negative:hover {
+    background: #fee2e2;
+    border-color: #ef4444;
+    color: #dc2626;
+}
+
+.gip-results-fb-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* 詳細フィードバックボタン */
+.gip-open-feedback-modal {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background: var(--gip-accent);
+    border: none;
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--gip-white);
+    cursor: pointer;
+    transition: var(--gip-transition);
+}
+
+.gip-open-feedback-modal:hover {
+    background: var(--gip-gray-800);
+}
+
+/* PC向けポップアップサイズ拡大 */
+@media (min-width: 769px) {
+    .gip-modal {
+        max-width: 680px;
+        width: 95%;
+        max-height: 88vh;
+    }
+    
+    .gip-modal .gip-chat-messages {
+        min-height: 450px;
+        max-height: 55vh;
+    }
+    
+    .gip-modal .gip-results {
+        max-height: 50vh;
+    }
+    
+    .gip-modal .gip-result-card {
+        padding: 20px;
+    }
+}
+
+/* タブレット向け */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .gip-modal {
+        max-width: 600px;
+    }
+}
+
+/* 大画面向け */
+@media (min-width: 1200px) {
+    .gip-modal {
+        max-width: 720px;
+        max-height: 85vh;
+    }
+    
+    .gip-modal .gip-chat-messages {
+        min-height: 500px;
+    }
+}
 ';
 }
 
@@ -7263,10 +8212,56 @@ function gip_frontend_js() {
             
             self.displayedCount = mainResults.length + subResults.length;
             
-            var html = '<div class="gip-results-header">';
+            // 結果サマリーパネル
+            var html = '<div class="gip-results-summary">';
+            html += '<div class="gip-results-summary-header">';
+            html += '<div class="gip-results-summary-icon">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>';
+            html += '</div>';
             html += '<div>';
-            html += '<h3 class="gip-results-title">検索結果</h3>';
-            html += '<p class="gip-results-count">全' + self.allResults.length + '件の補助金が見つかりました</p>';
+            html += '<div class="gip-results-summary-title">診断完了</div>';
+            html += '<div class="gip-results-summary-count">' + self.allResults.length + '件の補助金が見つかりました</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="gip-results-summary-info">';
+            // 合計金額（上位5件の最大補助額の合計概算）
+            var totalAmount = 0;
+            var openCount = 0;
+            for (var k = 0; k < Math.min(5, self.allResults.length); k++) {
+                var amt = self.allResults[k].max_amount_numeric || 0;
+                if (amt > 0) totalAmount += amt;
+                if (self.allResults[k].application_status === 'open' || !self.allResults[k].application_status) openCount++;
+            }
+            var amountDisplay = totalAmount > 100000000 ? Math.round(totalAmount / 100000000) + '億円+' : (totalAmount > 10000 ? Math.round(totalAmount / 10000) + '万円+' : '要確認');
+            html += '<div class="gip-summary-stat"><div class="gip-summary-stat-value">' + self.allResults.length + '</div><div class="gip-summary-stat-label">該当件数</div></div>';
+            html += '<div class="gip-summary-stat"><div class="gip-summary-stat-value">' + openCount + '</div><div class="gip-summary-stat-label">受付中</div></div>';
+            html += '<div class="gip-summary-stat"><div class="gip-summary-stat-value">' + amountDisplay + '</div><div class="gip-summary-stat-label">補助金額目安</div></div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // フィードバックバー
+            html += '<div class="gip-results-feedback-bar">';
+            html += '<span class="gip-results-feedback-text">この診断結果はいかがでしたか？</span>';
+            html += '<div class="gip-results-feedback-btns">';
+            html += '<button type="button" class="gip-results-fb-btn positive" data-feedback="positive">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
+            html += '参考になった';
+            html += '</button>';
+            html += '<button type="button" class="gip-results-fb-btn negative" data-feedback="negative">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
+            html += '期待と違った';
+            html += '</button>';
+            html += '<button type="button" class="gip-open-feedback-modal">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
+            html += '詳細を送る';
+            html += '</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            // 結果ヘッダー
+            html += '<div class="gip-results-header">';
+            html += '<div>';
+            html += '<h3 class="gip-results-title">マッチした補助金</h3>';
             html += '</div>';
             
             if (showComparison && self.allResults.length >= 2) {
@@ -7303,23 +8298,88 @@ function gip_frontend_js() {
                 html += '</div>';
             }
             
-            // 再検索オプション
-            if (response.show_research_option) {
-                html += '<div class="gip-research-options">';
-                html += '<p class="gip-research-title">条件を変えて検索しますか？</p>';
-                html += '<div class="gip-research-btns">';
-                html += '<button type="button" class="gip-option-btn gip-research-btn" data-value="他の補助金を探したい">他の補助金を探す</button>';
-                html += '<button type="button" class="gip-option-btn gip-research-btn" data-value="最初からやり直す">最初からやり直す</button>';
-                html += '</div></div>';
-            }
+            // 再調整パネル
+            html += '<div class="gip-readjust-panel">';
+            html += '<div class="gip-readjust-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+            html += '<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>';
+            html += '</svg>';
+            html += '<span>結果が期待と異なる場合</span>';
+            html += '</div>';
+            html += '<div class="gip-readjust-options">';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="expand_area">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>';
+            html += '地域を広げる';
+            html += '</button>';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="national">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+            html += '全国で検索';
+            html += '</button>';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="change_purpose">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
+            html += '目的を変更';
+            html += '</button>';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="restart">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>';
+            html += '最初から';
+            html += '</button>';
+            html += '</div>';
+            html += '</div>';
             
             self.$results.html(html).slideDown(300);
             
+            // イベントバインド
+            self.bindResultsEvents();
+            
             setTimeout(function() {
-                $('html, body').animate({
-                    scrollTop: self.$results.offset().top - 100
-                }, 500);
+                // スクロールはポップアップ内でのみ行う（ページ全体はスクロールしない）
+                var $resultsInner = self.$results;
+                if ($resultsInner.length && $resultsInner[0].scrollIntoView) {
+                    // smooth scroll within the container only
+                }
             }, 100);
+        },
+        
+        // 結果エリアのイベントバインド
+        bindResultsEvents: function() {
+            var self = this;
+            
+            // フィードバックバーのクリック
+            self.$results.off('click.gipfb').on('click.gipfb', '.gip-results-fb-btn', function() {
+                var feedback = $(this).data('feedback');
+                $(this).addClass('selected').siblings().removeClass('selected');
+                
+                // 全体フィードバック送信（個別補助金ではなくセッション全体に対して）
+                self.sendDetailedFeedback({
+                    feedbackType: feedback === 'positive' ? 'helpful' : 'not_helpful',
+                    rating: feedback === 'positive' ? 4 : 2
+                });
+                
+                // フィードバック送信完了メッセージ
+                var msg = feedback === 'positive' ? 'ありがとうございます！' : 'ご意見をありがとうございます。';
+                $(this).closest('.gip-results-feedback-bar').find('.gip-results-feedback-text').text(msg);
+            });
+            
+            // 詳細フィードバックモーダル
+            self.$results.off('click.gipmodal').on('click.gipmodal', '.gip-open-feedback-modal', function() {
+                self.showFeedbackModal(0);
+            });
+            
+            // 再調整ボタン
+            self.$results.off('click.gipreadj').on('click.gipreadj', '.gip-readjust-btn', function() {
+                var adjustType = $(this).data('adjust');
+                
+                if (adjustType === 'change_purpose') {
+                    var newPurpose = prompt('新しい目的を入力してください：');
+                    if (newPurpose) {
+                        self.readjust('purpose', newPurpose);
+                    }
+                } else if (adjustType === 'restart') {
+                    self.stepBack(99);
+                } else {
+                    self.readjust(adjustType, '');
+                }
+            });
         },
         
         // サブ結果カード（小さい表示）
@@ -7538,6 +8598,323 @@ function gip_frontend_js() {
                 },
                 error: function(xhr, status, error) {
                     console.error('GIP Chat: Feedback error', status, error);
+                }
+            });
+        },
+        
+        // 詳細フィードバック送信
+        sendDetailedFeedback: function(feedbackData) {
+            var self = this;
+            
+            if (!self.sessionId) return;
+            
+            $.ajax({
+                url: GIP_CHAT.api + '/feedback-detailed',
+                method: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'X-WP-Nonce': GIP_CHAT.nonce
+                },
+                data: JSON.stringify({
+                    session_id: self.sessionId,
+                    grant_id: feedbackData.grantId || 0,
+                    feedback_type: feedbackData.feedbackType,
+                    rating: feedbackData.rating || 0,
+                    comment: feedbackData.comment || '',
+                    suggestion: feedbackData.suggestion || '',
+                    email: feedbackData.email || ''
+                }),
+                success: function(response) {
+                    console.log('GIP Chat: Detailed feedback sent', response);
+                    if (response.success) {
+                        self.showFeedbackSuccess();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('GIP Chat: Detailed feedback error', status, error);
+                    alert('フィードバックの送信に失敗しました。');
+                }
+            });
+        },
+        
+        // フィードバックモーダルを表示
+        showFeedbackModal: function(grantId) {
+            var self = this;
+            
+            var html = '<div class="gip-feedback-modal-overlay">';
+            html += '<div class="gip-feedback-modal">';
+            html += '<div class="gip-feedback-modal-header">';
+            html += '<span class="gip-feedback-modal-title">診断結果へのフィードバック</span>';
+            html += '<button type="button" class="gip-feedback-modal-close">&times;</button>';
+            html += '</div>';
+            html += '<div class="gip-feedback-modal-body">';
+            
+            // 評価セクション
+            html += '<div class="gip-feedback-section">';
+            html += '<label class="gip-feedback-section-label">診断結果の満足度</label>';
+            html += '<div class="gip-rating-stars" data-rating="0">';
+            for (var i = 1; i <= 5; i++) {
+                html += '<button type="button" class="gip-star-btn" data-rating="' + i + '">';
+                html += '<svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>';
+                html += '</button>';
+            }
+            html += '</div>';
+            html += '</div>';
+            
+            // フィードバックタイプ
+            html += '<div class="gip-feedback-section">';
+            html += '<label class="gip-feedback-section-label">フィードバックの種類</label>';
+            html += '<div class="gip-feedback-types">';
+            html += '<button type="button" class="gip-feedback-type-btn" data-type="helpful">参考になった</button>';
+            html += '<button type="button" class="gip-feedback-type-btn" data-type="not_matched">条件に合わない</button>';
+            html += '<button type="button" class="gip-feedback-type-btn" data-type="more_info">もっと情報がほしい</button>';
+            html += '<button type="button" class="gip-feedback-type-btn" data-type="other">その他</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            // コメント
+            html += '<div class="gip-feedback-section">';
+            html += '<label class="gip-feedback-section-label">コメント・改善提案</label>';
+            html += '<textarea class="gip-feedback-textarea" placeholder="診断結果についてのご意見や、改善してほしい点があればお聞かせください..."></textarea>';
+            html += '</div>';
+            
+            // メール（任意）
+            html += '<div class="gip-feedback-section">';
+            html += '<label class="gip-feedback-section-label">メールアドレス（任意）</label>';
+            html += '<input type="email" class="gip-feedback-email" placeholder="example@email.com">';
+            html += '<div class="gip-feedback-email-note">回答が必要な場合はご入力ください</div>';
+            html += '</div>';
+            
+            html += '<button type="button" class="gip-feedback-submit" data-grant-id="' + (grantId || 0) + '">フィードバックを送信</button>';
+            html += '</div></div></div>';
+            
+            $('body').append(html);
+            
+            // アニメーションで表示
+            setTimeout(function() {
+                $('.gip-feedback-modal-overlay').addClass('active');
+            }, 10);
+            
+            // イベントハンドラー
+            self.bindFeedbackModalEvents();
+        },
+        
+        bindFeedbackModalEvents: function() {
+            var self = this;
+            
+            // モーダルを閉じる
+            $(document).off('click.gipfb').on('click.gipfb', '.gip-feedback-modal-close, .gip-feedback-modal-overlay', function(e) {
+                if (e.target === this) {
+                    self.closeFeedbackModal();
+                }
+            });
+            
+            // 星評価
+            $(document).on('click.gipfb', '.gip-star-btn', function() {
+                var rating = $(this).data('rating');
+                var $container = $(this).closest('.gip-rating-stars');
+                $container.data('rating', rating);
+                $container.find('.gip-star-btn').removeClass('active');
+                $container.find('.gip-star-btn').each(function() {
+                    if ($(this).data('rating') <= rating) {
+                        $(this).addClass('active');
+                    }
+                });
+            });
+            
+            // フィードバックタイプ選択
+            $(document).on('click.gipfb', '.gip-feedback-type-btn', function() {
+                $('.gip-feedback-type-btn').removeClass('selected');
+                $(this).addClass('selected');
+            });
+            
+            // 送信
+            $(document).on('click.gipfb', '.gip-feedback-submit', function() {
+                var $modal = $('.gip-feedback-modal');
+                var rating = $modal.find('.gip-rating-stars').data('rating') || 0;
+                var feedbackType = $modal.find('.gip-feedback-type-btn.selected').data('type') || 'general';
+                var comment = $modal.find('.gip-feedback-textarea').val().trim();
+                var email = $modal.find('.gip-feedback-email').val().trim();
+                var grantId = $(this).data('grant-id');
+                
+                if (rating === 0 && !feedbackType && !comment) {
+                    alert('評価またはコメントを入力してください');
+                    return;
+                }
+                
+                $(this).prop('disabled', true).text('送信中...');
+                
+                self.sendDetailedFeedback({
+                    grantId: grantId,
+                    feedbackType: feedbackType,
+                    rating: rating,
+                    comment: comment,
+                    email: email
+                });
+            });
+        },
+        
+        closeFeedbackModal: function() {
+            var $overlay = $('.gip-feedback-modal-overlay');
+            $overlay.removeClass('active');
+            setTimeout(function() {
+                $overlay.remove();
+            }, 300);
+            $(document).off('click.gipfb');
+        },
+        
+        showFeedbackSuccess: function() {
+            var self = this;
+            var $body = $('.gip-feedback-modal-body');
+            
+            $body.html(
+                '<div class="gip-feedback-success">' +
+                '<div class="gip-feedback-success-icon">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                '<path d="M20 6L9 17l-5-5"/>' +
+                '</svg>' +
+                '</div>' +
+                '<div class="gip-feedback-success-title">フィードバックを受け付けました</div>' +
+                '<div class="gip-feedback-success-text">貴重なご意見をありがとうございます。<br>サービス改善に活用させていただきます。</div>' +
+                '</div>'
+            );
+            
+            setTimeout(function() {
+                self.closeFeedbackModal();
+            }, 2500);
+        },
+        
+        // 戻る機能
+        stepBack: function(stepsBack) {
+            var self = this;
+            stepsBack = stepsBack || 1;
+            
+            if (!self.sessionId) return;
+            
+            $.ajax({
+                url: GIP_CHAT.api + '/step-back',
+                method: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'X-WP-Nonce': GIP_CHAT.nonce
+                },
+                data: JSON.stringify({
+                    session_id: self.sessionId,
+                    steps_back: stepsBack
+                }),
+                success: function(response) {
+                    console.log('GIP Chat: Step back response', response);
+                    if (response.success) {
+                        // 前のステップに戻った旨を表示
+                        self.addMessage('bot', response.message);
+                        
+                        if (response.restart) {
+                            // 最初からやり直す場合
+                            self.callApi({ session_id: self.sessionId, message: '' });
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('GIP Chat: Step back error', status, error);
+                }
+            });
+        },
+        
+        // 再調整機能
+        readjust: function(adjustType, newValue) {
+            var self = this;
+            
+            if (!self.sessionId || !adjustType) return;
+            
+            self.isLoading = true;
+            self.showTyping();
+            
+            $.ajax({
+                url: GIP_CHAT.api + '/readjust',
+                method: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'X-WP-Nonce': GIP_CHAT.nonce
+                },
+                data: JSON.stringify({
+                    session_id: self.sessionId,
+                    adjust_type: adjustType,
+                    new_value: newValue || ''
+                }),
+                success: function(response) {
+                    console.log('GIP Chat: Readjust response', response);
+                    self.hideTyping();
+                    
+                    if (response.success) {
+                        self.addMessage('bot', response.message);
+                        
+                        if (response.results && response.results.length > 0) {
+                            self.allResults = response.results;
+                            self.displayedCount = 0;
+                            self.selectedForCompare = [];
+                            self.renderResults(response.show_comparison);
+                        }
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('GIP Chat: Readjust error', status, error);
+                    self.hideTyping();
+                    self.addMessage('bot', '再検索中にエラーが発生しました。');
+                },
+                complete: function() {
+                    self.isLoading = false;
+                }
+            });
+        },
+        
+        // 再調整パネルを表示
+        showReadjustPanel: function() {
+            var self = this;
+            
+            var html = '<div class="gip-readjust-panel">';
+            html += '<div class="gip-readjust-header">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">';
+            html += '<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>';
+            html += '</svg>';
+            html += '<span>条件を変更して再検索</span>';
+            html += '</div>';
+            html += '<div class="gip-readjust-options">';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="expand_area">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>';
+            html += '地域を広げる';
+            html += '</button>';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="national">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+            html += '全国で検索';
+            html += '</button>';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="change_purpose">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>';
+            html += '目的を変更';
+            html += '</button>';
+            html += '<button type="button" class="gip-readjust-btn" data-adjust="restart">';
+            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>';
+            html += '最初から';
+            html += '</button>';
+            html += '</div>';
+            html += '</div>';
+            
+            self.$results.append(html);
+            
+            // イベントハンドラー
+            self.$results.find('.gip-readjust-btn').on('click', function() {
+                var adjustType = $(this).data('adjust');
+                
+                if (adjustType === 'change_purpose') {
+                    // 目的変更の場合は入力を促す
+                    var newPurpose = prompt('新しい目的を入力してください：');
+                    if (newPurpose) {
+                        self.readjust('purpose', newPurpose);
+                    }
+                } else if (adjustType === 'restart') {
+                    // 最初からやり直す
+                    self.stepBack(99);
+                } else {
+                    self.readjust(adjustType, '');
                 }
             });
         },
