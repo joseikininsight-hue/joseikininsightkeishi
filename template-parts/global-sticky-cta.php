@@ -270,26 +270,35 @@ body.single-grant {
 
     let lastScrollY = window.scrollY;
     let ticking = false;
-    const threshold = 50; // スクロール感度
+    const threshold = 50;
+    
+    // ★パフォーマンス改善: 高さをキャッシュ（リサイズ時のみ再計算）
+    let cachedWindowHeight = window.innerHeight;
+    let cachedDocHeight = document.documentElement.scrollHeight;
+    
+    // リサイズ時のみ高さを再計算
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            cachedWindowHeight = window.innerHeight;
+            cachedDocHeight = document.documentElement.scrollHeight;
+        }, 150);
+    }, { passive: true });
 
     const updateUI = () => {
         const currentScrollY = window.scrollY;
-        const windowHeight = window.innerHeight;
-        const docHeight = document.documentElement.scrollHeight;
 
-        // 1. ページ最下部では常に表示
-        if (windowHeight + currentScrollY >= docHeight - 50) {
+        // キャッシュした値を使用（Reflow防止）
+        if (cachedWindowHeight + currentScrollY >= cachedDocHeight - 50) {
             stickyBar.classList.remove('is-hidden');
             ticking = false;
             return;
         }
 
-        // 2. スクロール方向制御
         if (currentScrollY > lastScrollY && currentScrollY > threshold) {
-            // 下へスクロール: 隠す
             stickyBar.classList.add('is-hidden');
         } else {
-            // 上へスクロール: 表示
             stickyBar.classList.remove('is-hidden');
         }
 
@@ -297,7 +306,6 @@ body.single-grant {
         ticking = false;
     };
 
-    // Scroll Listener
     window.addEventListener('scroll', () => {
         if (!ticking) {
             window.requestAnimationFrame(updateUI);
@@ -305,12 +313,10 @@ body.single-grant {
         }
     }, { passive: true });
 
-    // 初期表示演出
     setTimeout(() => {
         stickyBar.classList.remove('is-hidden');
     }, 800);
 
-    // Google Analytics Event
     const btns = stickyBar.querySelectorAll('.ui-sticky-btn');
     btns.forEach(btn => {
         btn.addEventListener('click', function() {
@@ -323,7 +329,5 @@ body.single-grant {
             }
         });
     });
-
-    console.log('✅ Compact Sticky CTA Initialized');
 })();
 </script>

@@ -9,7 +9,7 @@
 if (!defined('ABSPATH')) exit;
 
 class GI_SEO_Content_Manager {
-    private $version = '30.0.0';
+    private $version = '31.4.0';
     private $table_queue;
     private $table_failed;
     private $table_merge_history;
@@ -92,6 +92,8 @@ class GI_SEO_Content_Manager {
         add_action('wp_ajax_gi_subsidy_get_stats', array($this, 'ajax_subsidy_get_stats'));
         add_action('wp_ajax_gi_subsidy_check_exists', array($this, 'ajax_subsidy_check_exists'));
         add_action('wp_ajax_gi_subsidy_sync_posts', array($this, 'ajax_subsidy_sync_posts'));
+        add_action('wp_ajax_gi_subsidy_debug_match', array($this, 'ajax_subsidy_debug_match'));
+        add_action('wp_ajax_gi_subsidy_reset_matches', array($this, 'ajax_subsidy_reset_matches'));
 
         // PV計測（post_metaを使用）
         add_action('wp_ajax_gi_track_pv', array($this, 'ajax_track_pv'));
@@ -1602,6 +1604,22 @@ class GI_SEO_Content_Manager {
                 $args['orderby'] = 'meta_value_num';
                 $args['order'] = 'DESC';
                 break;
+            case 'renovated_desc':
+                $args['meta_key'] = '_gi_renovated_at';
+                $args['orderby'] = 'meta_value';
+                $args['order'] = 'DESC';
+                if ($status !== 'renovated') {
+                    $args['meta_query'] = array(array('key' => '_gi_renovated_at', 'compare' => 'EXISTS'));
+                }
+                break;
+            case 'renovated_asc':
+                $args['meta_key'] = '_gi_renovated_at';
+                $args['orderby'] = 'meta_value';
+                $args['order'] = 'ASC';
+                if ($status !== 'renovated') {
+                    $args['meta_query'] = array(array('key' => '_gi_renovated_at', 'compare' => 'EXISTS'));
+                }
+                break;
             default:
                 $args['orderby'] = 'date';
                 $args['order'] = 'DESC';
@@ -1611,13 +1629,17 @@ class GI_SEO_Content_Manager {
         $posts = array();
 
         foreach ($query->posts as $p) {
+            $renovated_at = get_post_meta($p->ID, '_gi_renovated_at', true);
+            $renovation_count = get_post_meta($p->ID, '_gi_renovation_count', true);
             $posts[] = array(
                 'id' => $p->ID,
                 'title' => $p->post_title,
                 'date' => $p->post_date,
                 'char_count' => mb_strlen(strip_tags($p->post_content)),
                 'pv' => $this->get_post_pv($p->ID),
-                'renovated' => !empty(get_post_meta($p->ID, '_gi_renovated_at', true)),
+                'renovated' => !empty($renovated_at),
+                'renovated_at' => $renovated_at ? substr($renovated_at, 0, 10) : null,
+                'renovation_count' => (int)$renovation_count,
                 'has_report' => !empty(get_post_meta($p->ID, '_gi_renovation_report', true)),
                 'url' => get_permalink($p->ID)
             );
@@ -2596,26 +2618,90 @@ class GI_SEO_Content_Manager {
 
         $page = intval($_POST['page'] ?? 1);
         $per_page = intval($_POST['per_page'] ?? 50);
+        $sort = sanitize_text_field($_POST['sort'] ?? 'renovated_desc');
 
         $total = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_renovation_stats}");
 
-        $stats = $wpdb->get_results($wpdb->prepare(
-            "SELECT s.*, p.post_title as current_title
-             FROM {$this->table_renovation_stats} s
-             LEFT JOIN {$wpdb->posts} p ON s.post_id = p.ID
-             ORDER BY s.renovated_at DESC
-             LIMIT %d OFFSET %d",
-            $per_page, ($page - 1) * $per_page
-        ));
+        // ソート順序の決定
+        $order_sql = 's.renovated_at DESC';
+        switch ($sort) {
+            case 'renovated_asc':
+                $order_sql = 's.renovated_at ASC';
+                break;
+            case 'pv_current_desc':
+                $order_sql = 'current_pv DESC';
+                break;
+            case 'pv_current_asc':
+                $order_sql = 'current_pv ASC';
+                break;
+            case 'pv_change_desc':
+                $order_sql = 'pv_change DESC';
+                break;
+            case 'pv_change_asc':
+                $order_sql = 'pv_change ASC';
+                break;
+        }
 
-        // 現在のPVを取得
-        foreach ($stats as &$stat) {
-            $stat->current_pv = $this->get_post_pv($stat->post_id);
-            $stat->pv_change = $stat->current_pv - $stat->pv_before;
+        // PVソートの場合は一度全件取得してソートする必要がある
+        if (strpos($sort, 'pv_') === 0) {
+            $stats = $wpdb->get_results(
+                "SELECT s.*, p.post_title as current_title
+                 FROM {$this->table_renovation_stats} s
+                 LEFT JOIN {$wpdb->posts} p ON s.post_id = p.ID"
+            );
             
-            if (empty($stat->post_title) && !empty($stat->current_title)) {
-                $stat->post_title = $stat->current_title;
+            // 現在のPVを取得して配列に追加
+            foreach ($stats as &$stat) {
+                $stat->current_pv = $this->get_post_pv($stat->post_id);
+                $stat->pv_change = $stat->current_pv - $stat->pv_before;
+                
+                if (empty($stat->post_title) && !empty($stat->current_title)) {
+                    $stat->post_title = $stat->current_title;
+                }
             }
+            
+            // PHPでソート
+            usort($stats, function($a, $b) use ($sort) {
+                switch ($sort) {
+                    case 'pv_current_desc':
+                        return $b->current_pv - $a->current_pv;
+                    case 'pv_current_asc':
+                        return $a->current_pv - $b->current_pv;
+                    case 'pv_change_desc':
+                        return $b->pv_change - $a->pv_change;
+                    case 'pv_change_asc':
+                        return $a->pv_change - $b->pv_change;
+                    default:
+                        return 0;
+                }
+            });
+            
+            // ページネーション
+            $stats = array_slice($stats, ($page - 1) * $per_page, $per_page);
+        } else {
+            $stats = $wpdb->get_results($wpdb->prepare(
+                "SELECT s.*, p.post_title as current_title
+                 FROM {$this->table_renovation_stats} s
+                 LEFT JOIN {$wpdb->posts} p ON s.post_id = p.ID
+                 ORDER BY {$order_sql}
+                 LIMIT %d OFFSET %d",
+                $per_page, ($page - 1) * $per_page
+            ));
+
+            // 現在のPVを取得
+            foreach ($stats as &$stat) {
+                $stat->current_pv = $this->get_post_pv($stat->post_id);
+                $stat->pv_change = $stat->current_pv - $stat->pv_before;
+                
+                if (empty($stat->post_title) && !empty($stat->current_title)) {
+                    $stat->post_title = $stat->current_title;
+                }
+            }
+        }
+
+        // 実際のURLを追加
+        foreach ($stats as &$stat) {
+            $stat->url = get_permalink($stat->post_id);
         }
 
         wp_send_json_success(array(
@@ -3113,12 +3199,56 @@ class GI_SEO_Content_Manager {
         check_ajax_referer('gi_seo_nonce', 'nonce');
         global $wpdb;
 
-        $items = $wpdb->get_results("SELECT * FROM {$this->table_subsidy} ORDER BY created_at DESC");
+        // フィルター条件を取得
+        $search = sanitize_text_field($_POST['search'] ?? '');
+        $prefecture = sanitize_text_field($_POST['prefecture'] ?? '');
+        $status = sanitize_text_field($_POST['status'] ?? '');
+        $exists_filter = sanitize_text_field($_POST['exists_filter'] ?? '');
+        
+        // クエリ構築
+        $where = array('1=1');
+        $params = array();
+        
+        if (!empty($search)) {
+            $where[] = "(title LIKE %s OR notes LIKE %s)";
+            $params[] = '%' . $wpdb->esc_like($search) . '%';
+            $params[] = '%' . $wpdb->esc_like($search) . '%';
+        }
+        
+        if (!empty($prefecture)) {
+            $where[] = "prefecture = %s";
+            $params[] = $prefecture;
+        }
+        
+        if (!empty($status)) {
+            $where[] = "status = %s";
+            $params[] = $status;
+        }
+        
+        if ($exists_filter === 'exists') {
+            $where[] = "matched_post_id IS NOT NULL";
+        } elseif ($exists_filter === 'not_exists') {
+            $where[] = "matched_post_id IS NULL";
+        }
+        
+        $where_clause = implode(' AND ', $where);
+        $sql = "SELECT * FROM {$this->table_subsidy} WHERE {$where_clause} ORDER BY created_at DESC";
+        
+        if (!empty($params)) {
+            $sql = $wpdb->prepare($sql, $params);
+        }
+        
+        $items = $wpdb->get_results($sql);
 
         $csv_data = array();
-        $csv_data[] = array('タイトル', 'URL', '締切日', '都道府県', '市区町村', '補助金額', 'ステータス', 'データソース', 'メモ', '投稿ID', '作成日時', '更新日時');
+        $csv_data[] = array('タイトル', 'URL', '締切日', '都道府県', '市区町村', '補助金額', 'ステータス', 'データソース', 'メモ', '投稿ID', 'マッチ投稿タイトル', '作成日時', '更新日時');
 
         foreach ($items as $item) {
+            $matched_title = '';
+            if ($item->matched_post_id) {
+                $matched_title = get_the_title($item->matched_post_id);
+            }
+            
             $csv_data[] = array(
                 $item->title,
                 $item->url,
@@ -3129,15 +3259,25 @@ class GI_SEO_Content_Manager {
                 $item->status,
                 $item->data_source,
                 $item->notes,
-                $item->matched_post_id,
+                $item->matched_post_id ?: '',
+                $matched_title,
                 $item->created_at,
                 $item->updated_at
             );
         }
 
+        // フィルター情報も返す
+        $filter_info = array();
+        if (!empty($search)) $filter_info[] = "検索: {$search}";
+        if (!empty($prefecture)) $filter_info[] = "都道府県: {$prefecture}";
+        if (!empty($status)) $filter_info[] = "ステータス: {$status}";
+        if ($exists_filter === 'exists') $filter_info[] = "投稿あり";
+        if ($exists_filter === 'not_exists') $filter_info[] = "投稿なし";
+
         wp_send_json_success(array(
             'data' => $csv_data,
-            'count' => count($items)
+            'count' => count($items) - 1, // ヘッダー除く
+            'filter_info' => !empty($filter_info) ? implode(' / ', $filter_info) : '全件'
         ));
     }
 
@@ -3222,20 +3362,55 @@ class GI_SEO_Content_Manager {
         check_ajax_referer('gi_seo_nonce', 'nonce');
         global $wpdb;
 
-        $limit = intval($_POST['limit'] ?? 100);
+        // 初回呼び出しかどうかをチェック
+        $is_init = isset($_POST['init']) && $_POST['init'] === 'true';
+        $skip_matched = isset($_POST['skip_matched']) ? $_POST['skip_matched'] === 'true' : true;
+        
+        // 初回は総数だけ返す
+        if ($is_init) {
+            if ($skip_matched) {
+                $total = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
+            } else {
+                $total = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}");
+            }
+            wp_send_json_success(array(
+                'total' => $total,
+                'init' => true
+            ));
+            return;
+        }
+
+        // 処理件数（補助金DBの件数ベース）
+        $limit = intval($_POST['limit'] ?? 50);
         $offset = intval($_POST['offset'] ?? 0);
+        
+        // 実行時間制限を設定
+        set_time_limit(120);
+        
+        // 照合対象を取得（補助金DBから）
+        if ($skip_matched) {
+            // 未マッチの補助金のみ取得（IDでページネーション）
+            $subsidies = $wpdb->get_results($wpdb->prepare(
+                "SELECT id, title, prefecture FROM {$this->table_subsidy} WHERE matched_post_id IS NULL ORDER BY id ASC LIMIT %d OFFSET %d",
+                $limit, $offset
+            ));
+        } else {
+            $subsidies = $wpdb->get_results($wpdb->prepare(
+                "SELECT id, title, prefecture FROM {$this->table_subsidy} ORDER BY id ASC LIMIT %d OFFSET %d",
+                $limit, $offset
+            ));
+        }
 
-        $subsidies = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$this->table_subsidy} WHERE matched_post_id IS NULL LIMIT %d OFFSET %d",
-            $limit, $offset
-        ));
-
-        $processed = 0;
+        $processed = count($subsidies);
         $matched = 0;
         $results = array();
 
         foreach ($subsidies as $subsidy) {
-            $processed++;
+            // メモリ使用量チェック（256MBまで許容）
+            if (memory_get_usage(true) > 256 * 1024 * 1024) {
+                break;
+            }
+            
             $match = $this->find_matching_post_for_subsidy($subsidy->title, $subsidy->prefecture);
 
             if ($match) {
@@ -3246,6 +3421,7 @@ class GI_SEO_Content_Manager {
 
                 $matched++;
                 $results[] = array(
+                    'subsidy_id' => $subsidy->id,
                     'subsidy' => $subsidy->title,
                     'post' => $match['title'],
                     'score' => $match['score']
@@ -3253,91 +3429,340 @@ class GI_SEO_Content_Manager {
             }
         }
 
-        $remaining = $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
+        // 残りの件数を再計算
+        if ($skip_matched) {
+            $remaining = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL");
+        } else {
+            $total = (int)$wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}");
+            $remaining = max(0, $total - $offset - $processed);
+        }
 
         wp_send_json_success(array(
             'processed' => $processed,
             'matched' => $matched,
-            'remaining' => (int)$remaining,
-            'has_more' => count($subsidies) === $limit,
-            'results' => array_slice($results, 0, 20)
+            'remaining' => $remaining,
+            'has_more' => $processed > 0 && $remaining > 0,
+            'results' => array_slice($results, 0, 10),
+            'next_offset' => $offset + $processed
         ));
     }
-
-    private function find_matching_post_for_subsidy($subsidy_title, $prefecture = '') {
-        $candidates = array();
+    
+    /**
+     * デバッグ用：補助金マッチングのテスト
+     */
+    public function ajax_subsidy_debug_match() {
+        check_ajax_referer('gi_seo_nonce', 'nonce');
+        global $wpdb;
         
-        $subsidy_name = $this->extract_subsidy_name($subsidy_title);
-        $clean_title = $this->clean_title_for_comparison($subsidy_title);
+        // サンプルの補助金データを取得
+        $samples = $wpdb->get_results(
+            "SELECT id, title, prefecture FROM {$this->table_subsidy} WHERE matched_post_id IS NULL LIMIT 5"
+        );
         
-        $search_terms = array();
-        if (!empty($subsidy_name)) {
-            $search_terms[] = $subsidy_name;
-        }
-        $search_terms[] = $clean_title;
+        $debug_results = array();
         
-        foreach ($search_terms as $term) {
-            if (empty($term)) continue;
+        foreach ($samples as $sample) {
+            $names = $this->extract_all_subsidy_names($sample->title);
             
-            $args = array(
-                'post_type' => $this->get_target_post_types(),
-                'post_status' => 'publish',
-                's' => $term,
-                'posts_per_page' => 30
-            );
-            
-            $query = new WP_Query($args);
-            
-            foreach ($query->posts as $post) {
-                $score = 0;
-                $match_type = 'partial';
+            // 各名前で検索
+            $found_posts = array();
+            foreach ($names as $name) {
+                if (mb_strlen($name) < 3) continue;
                 
-                if (mb_stripos($post->post_title, $subsidy_name) !== false && !empty($subsidy_name)) {
-                    $score += 50;
-                    $match_type = 'exact';
-                }
+                $like = '%' . $wpdb->esc_like($name) . '%';
+                $posts = $wpdb->get_results($wpdb->prepare(
+                    "SELECT ID, post_title FROM {$wpdb->posts} 
+                     WHERE post_status = 'publish' 
+                     AND post_title LIKE %s 
+                     LIMIT 5",
+                    $like
+                ));
                 
-                $similarity = $this->calculate_title_similarity($subsidy_title, $post->post_title);
-                $score += $similarity * 30;
-                
-                if (!empty($prefecture)) {
-                    $post_regions = $this->extract_region_from_text($post->post_title);
-                    $subsidy_region = $this->normalize_region($prefecture);
-                    
-                    foreach ($post_regions as $region) {
-                        if ($this->normalize_region($region) === $subsidy_region) {
-                            $score += 15;
-                            break;
-                        }
-                    }
-                }
-                
-                $pv = $this->get_post_pv($post->ID);
-                $score += min($pv / 100, 5);
-                
-                if ($score >= 30) {
-                    $candidates[$post->ID] = array(
-                        'post_id' => $post->ID,
-                        'title' => $post->post_title,
-                        'url' => get_permalink($post->ID),
-                        'score' => $score,
-                        'match_type' => $match_type
+                foreach ($posts as $p) {
+                    $found_posts[] = array(
+                        'id' => $p->ID,
+                        'title' => $p->post_title,
+                        'matched_by' => $name
                     );
                 }
             }
             
-            wp_reset_postdata();
+            $debug_results[] = array(
+                'subsidy_id' => $sample->id,
+                'subsidy_title' => $sample->title,
+                'prefecture' => $sample->prefecture,
+                'extracted_names' => $names,
+                'found_posts' => $found_posts
+            );
+        }
+        
+        // WP投稿のサンプルも取得
+        $wp_posts_sample = $wpdb->get_results(
+            "SELECT ID, post_title FROM {$wpdb->posts} 
+             WHERE post_status = 'publish' 
+             AND post_type IN ('post', 'page')
+             AND (post_title LIKE '%補助金%' OR post_title LIKE '%助成金%')
+             LIMIT 20"
+        );
+        
+        wp_send_json_success(array(
+            'debug_results' => $debug_results,
+            'wp_posts_with_subsidy' => $wp_posts_sample,
+            'total_subsidies' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy}"),
+            'unmatched_subsidies' => $wpdb->get_var("SELECT COUNT(*) FROM {$this->table_subsidy} WHERE matched_post_id IS NULL")
+        ));
+    }
+    
+    /**
+     * マッチ情報をリセット（再スキャン用）
+     */
+    public function ajax_subsidy_reset_matches() {
+        check_ajax_referer('gi_seo_nonce', 'nonce');
+        global $wpdb;
+        
+        $mode = sanitize_text_field($_POST['mode'] ?? 'all');
+        $ids = isset($_POST['ids']) ? array_map('intval', (array)$_POST['ids']) : array();
+        
+        if ($mode === 'all') {
+            // 全マッチをリセット
+            $updated = $wpdb->query(
+                "UPDATE {$this->table_subsidy} SET matched_post_id = NULL, match_type = NULL WHERE matched_post_id IS NOT NULL"
+            );
+            wp_send_json_success(array(
+                'message' => $updated . '件のマッチ情報をリセットしました',
+                'count' => $updated
+            ));
+        } elseif ($mode === 'selected' && !empty($ids)) {
+            // 選択した補助金のみリセット
+            $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+            $updated = $wpdb->query($wpdb->prepare(
+                "UPDATE {$this->table_subsidy} SET matched_post_id = NULL, match_type = NULL WHERE id IN ($placeholders)",
+                $ids
+            ));
+            wp_send_json_success(array(
+                'message' => $updated . '件のマッチ情報をリセットしました',
+                'count' => $updated
+            ));
+        } else {
+            wp_send_json_error('リセット対象を指定してください');
+        }
+    }
+
+    private function find_matching_post_for_subsidy($subsidy_title, $prefecture = '') {
+        global $wpdb;
+        
+        // ステップ1: 補助金名を抽出
+        $subsidy_names = $this->extract_all_subsidy_names($subsidy_title);
+        
+        if (empty($subsidy_names)) {
+            return null;
+        }
+        
+        // 投稿タイプを取得
+        $post_types = $this->get_target_post_types();
+        $type_placeholders = implode(',', array_fill(0, count($post_types), '%s'));
+        
+        $candidates = array();
+        
+        // ステップ2: 各補助金名でWP投稿を検索
+        foreach ($subsidy_names as $name) {
+            if (mb_strlen($name) < 3) continue;
+            
+            $like_keyword = '%' . $wpdb->esc_like($name) . '%';
+            
+            $sql = $wpdb->prepare(
+                "SELECT ID, post_title FROM {$wpdb->posts} 
+                 WHERE post_type IN ($type_placeholders) 
+                 AND post_status = 'publish' 
+                 AND post_title LIKE %s 
+                 LIMIT 30",
+                array_merge($post_types, array($like_keyword))
+            );
+            
+            $posts = $wpdb->get_results($sql);
+            
+            foreach ($posts as $post) {
+                if (isset($candidates[$post->ID])) continue;
+                
+                $score = 50; // 補助金名が含まれている時点で基本スコア
+                $match_type = 'name_match';
+                
+                // 補助金名の長さでボーナス（長いほど確実なマッチ）
+                $score += min(mb_strlen($name), 20);
+                
+                // 都道府県もマッチすればボーナス
+                if (!empty($prefecture) && mb_stripos($post->post_title, $prefecture) !== false) {
+                    $score += 20;
+                    $match_type = 'exact';
+                }
+                
+                $candidates[$post->ID] = array(
+                    'post_id' => $post->ID,
+                    'title' => $post->post_title,
+                    'url' => get_permalink($post->ID),
+                    'score' => $score,
+                    'match_type' => $match_type,
+                    'matched_name' => $name
+                );
+            }
+            
+            // 十分な候補が見つかったら終了
+            if (count($candidates) >= 5) break;
         }
         
         if (empty($candidates)) {
             return null;
         }
         
+        // スコア順にソート
         uasort($candidates, function($a, $b) {
             return $b['score'] - $a['score'];
         });
         
         return reset($candidates);
+    }
+    
+    /**
+     * 補助金タイトルから全ての補助金名・事業名を抽出
+     * 
+     * 対応パターン:
+     * - 住宅リフォーム工事費補助金
+     * - 高齢者のインフルエンザ予防接種費助成事業
+     * - 熊本県美里町：「美里町土地改良事業」
+     * - 福岡県中小企業IT導入・賃上げ緊急支援補助金
+     */
+    private function extract_all_subsidy_names($title) {
+        $names = array();
+        
+        // 前処理：都道府県名・市区町村名を除去してコア部分を取得
+        $clean_title = $title;
+        $clean_title = preg_replace('/^(北海道|東京都|大阪府|京都府|.{2,3}県).{1,5}(市|町|村|区)?[：:]?\s*/', '', $clean_title);
+        $clean_title = preg_replace('/^(令和|平成|R|H)?\d+年度?\s*/', '', $clean_title);
+        $clean_title = preg_replace('/[（(][^）)]*[）)]/', '', $clean_title); // 括弧内を除去
+        $clean_title = trim($clean_title);
+        
+        // パターン1: 〇〇補助金、〇〇助成金、〇〇事業など（最重要）
+        $suffixes = array(
+            '補助金', '助成金', '支援金', '給付金', '交付金', '奨励金',
+            '助成事業', '支援事業', '補助事業', '推進事業', '促進事業',
+            '事業'  // 最後に広いパターン
+        );
+        
+        foreach ($suffixes as $suffix) {
+            // タイトル全体から検索
+            if (preg_match('/([ぁ-んァ-ヶー一-龥a-zA-Z0-9・]{3,30}' . preg_quote($suffix, '/') . ')/', $clean_title, $m)) {
+                $name = trim($m[1]);
+                if (mb_strlen($name) >= 5 && !in_array($name, $names)) {
+                    $names[] = $name;
+                }
+            }
+            // 元タイトルからも検索
+            if (preg_match('/([ぁ-んァ-ヶー一-龥a-zA-Z0-9・]{3,30}' . preg_quote($suffix, '/') . ')/', $title, $m)) {
+                $name = trim($m[1]);
+                if (mb_strlen($name) >= 5 && !in_array($name, $names)) {
+                    $names[] = $name;
+                }
+            }
+        }
+        
+        // パターン2: 「」内のテキスト
+        if (preg_match_all('/「([^」]{3,50})」/', $title, $matches)) {
+            foreach ($matches[1] as $m) {
+                $m = trim($m);
+                $m = preg_replace('/^(令和|平成|R|H)?\d+年度?\s*/', '', $m);
+                if (mb_strlen($m) >= 4 && !in_array($m, $names)) {
+                    $names[] = $m;
+                }
+            }
+        }
+        
+        // パターン3: 【】内のテキスト（都道府県以外）
+        if (preg_match_all('/【([^】]{3,50})】/', $title, $matches)) {
+            foreach ($matches[1] as $m) {
+                $m = trim($m);
+                if (!preg_match('/^(北海道|東京都|大阪府|京都府|.{2,3}県|.{1,4}市|.{1,4}町|.{1,4}村)$/', $m)) {
+                    if (mb_strlen($m) >= 4 && !in_array($m, $names)) {
+                        $names[] = $m;
+                    }
+                }
+            }
+        }
+        
+        // パターン4: キーワードベースの検索用語を追加
+        $keywords = array();
+        
+        // IT導入、リフォーム、インフルエンザなど特徴的なキーワード
+        $important_words = array(
+            'IT導入', 'リフォーム', '省エネ', '脱炭素', 'クリーンエネルギー',
+            'インフルエンザ', '予防接種', '住宅', '空家', '解体',
+            '創業', '起業', '事業承継', '販路開拓', '生産性向上',
+            '人材育成', '雇用', '賃上げ', 'DX', 'デジタル',
+            '移住', 'UIターン', '定住', '子育て', '保育',
+            '農業', '漁業', '林業', '土地改良', '設備導入'
+        );
+        
+        foreach ($important_words as $word) {
+            if (mb_stripos($title, $word) !== false) {
+                $keywords[] = $word;
+            }
+        }
+        
+        // パターン5: 省略名・通称の展開
+        $abbreviations = array(
+            '持続化補助金' => array('持続化補助金', '小規模事業者持続化補助金'),
+            'ものづくり補助金' => array('ものづくり補助金', 'ものづくり・商業・サービス'),
+            '事業再構築' => array('事業再構築補助金', '事業再構築'),
+            'IT導入補助金' => array('IT導入補助金', 'IT導入'),
+        );
+        
+        foreach ($abbreviations as $key => $variants) {
+            if (mb_stripos($title, $key) !== false) {
+                foreach ($variants as $v) {
+                    if (!in_array($v, $names)) {
+                        $names[] = $v;
+                    }
+                }
+            }
+        }
+        
+        // キーワードも追加（名前が少ない場合）
+        if (count($names) < 3) {
+            foreach ($keywords as $kw) {
+                if (!in_array($kw, $names)) {
+                    $names[] = $kw;
+                }
+            }
+        }
+        
+        return array_unique(array_filter($names));
+    }
+    
+    private function extract_search_keywords($title) {
+        $keywords = array();
+        
+        // 「」内のテキストを抽出
+        if (preg_match_all('/「([^」]+)」/', $title, $matches)) {
+            foreach ($matches[1] as $m) {
+                if (mb_strlen($m) >= 3) $keywords[] = $m;
+            }
+        }
+        
+        // ○○補助金、○○助成金、○○支援金などのパターン
+        if (preg_match('/(\S{2,}(?:補助金|助成金|支援金|給付金|交付金|奨励金))/', $title, $m)) {
+            $keywords[] = $m[1];
+        }
+        
+        // 主要な名詞を抽出（簡易版）
+        $clean = preg_replace('/[【】「」『』（）()\[\]\s　]+/', ' ', $title);
+        $parts = preg_split('/[\s・,、，]+/', $clean);
+        foreach ($parts as $part) {
+            $part = trim($part);
+            if (mb_strlen($part) >= 4 && !preg_match('/^(令和|平成|\d+年度?)/', $part)) {
+                $keywords[] = $part;
+            }
+        }
+        
+        return array_unique($keywords);
     }
 
     // ================================================================
@@ -3467,9 +3892,11 @@ class GI_SEO_Content_Manager {
                         <option value="not_renovated">未処理</option>
                     </select>
                     <select class="gi-select" id="filter-sort">
-                        <option value="date_desc">日付降順</option>
-                        <option value="date_asc">日付昇順</option>
-                        <option value="pv_desc">PV降順</option>
+                        <option value="date_desc">投稿日（新しい順）</option>
+                        <option value="date_asc">投稿日（古い順）</option>
+                        <option value="pv_desc">PV（多い順）</option>
+                        <option value="renovated_desc">リノベ日（新しい順）</option>
+                        <option value="renovated_asc">リノベ日（古い順）</option>
                     </select>
                     <select class="gi-select" id="per-page">
                         <option value="100">100件</option>
@@ -3490,12 +3917,13 @@ class GI_SEO_Content_Manager {
                             <th>タイトル</th>
                             <th width="80">文字数</th>
                             <th width="60">PV</th>
+                            <th width="90">リノベ日</th>
                             <th width="80">状態</th>
                             <th width="200">操作</th>
                         </tr>
                     </thead>
                     <tbody id="posts-tbody">
-                        <tr><td colspan="6" style="text-align:center;padding:30px;">読み込み中...</td></tr>
+                        <tr><td colspan="7" style="text-align:center;padding:30px;">読み込み中...</td></tr>
                     </tbody>
                 </table>
                 <div id="pagination" style="margin-top:15px;"></div>
@@ -3613,17 +4041,21 @@ class GI_SEO_Content_Manager {
                     if(r.success){
                         var html = '';
                         if(r.data.posts.length === 0){
-                            html = '<tr><td colspan="6" style="text-align:center;padding:30px;">なし</td></tr>';
+                            html = '<tr><td colspan="7" style="text-align:center;padding:30px;">なし</td></tr>';
                         } else {
                             r.data.posts.forEach(function(p){
                                 var badge = p.has_report ? '<span class="gi-badge gi-badge-done">カルテ有</span>' : 
                                            (p.renovated ? '<span class="gi-badge gi-badge-done">済</span>' : 
                                            '<span class="gi-badge gi-badge-pending">未</span>');
+                                var renovateInfo = p.renovated_at ? p.renovated_at : '-';
+                                if(p.renovation_count > 1) renovateInfo += ' <small>('+p.renovation_count+'回)</small>';
+                                
                                 html += '<tr data-id="'+p.id+'">';
                                 html += '<td><input type="checkbox" class="post-check" value="'+p.id+'" data-renovated="'+(p.renovated?'1':'0')+'"></td>';
                                 html += '<td><a href="'+p.url+'" target="_blank">'+p.title+'</a></td>';
                                 html += '<td>'+p.char_count.toLocaleString()+'</td>';
                                 html += '<td>'+p.pv+'</td>';
+                                html += '<td>'+renovateInfo+'</td>';
                                 html += '<td>'+badge+'</td>';
                                 html += '<td>';
                                 html += '<button class="gi-btn btn-report" data-id="'+p.id+'" '+(p.has_report?'':'disabled')+' style="padding:4px 8px;font-size:12px;">カルテ</button> ';
@@ -4650,15 +5082,29 @@ class GI_SEO_Content_Manager {
             <div class="gi-card">
                 <h3>リノベーション統計</h3>
                 <p style="color:#666;font-size:13px;">リノベーション実施前後のPV変化を確認できます。</p>
+                
+                <div style="margin-bottom:15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                    <label style="font-weight:600;">並び替え:</label>
+                    <select class="gi-select" id="pv-sort">
+                        <option value="renovated_desc">リノベーション日（新しい順）</option>
+                        <option value="renovated_asc">リノベーション日（古い順）</option>
+                        <option value="pv_current_desc">現在のPV（多い順）</option>
+                        <option value="pv_current_asc">現在のPV（少ない順）</option>
+                        <option value="pv_change_desc">PV変化（増加順）</option>
+                        <option value="pv_change_asc">PV変化（減少順）</option>
+                    </select>
+                    <button class="gi-btn" id="btn-pv-reload">🔄 更新</button>
+                </div>
+                
                 <table class="gi-table">
                     <thead>
                         <tr>
                             <th>タイトル</th>
-                            <th width="100">実施日</th>
+                            <th width="100" style="cursor:pointer" class="sortable" data-sort="renovated">実施日 ▼</th>
                             <th width="80">文字数変化</th>
                             <th width="80">PV(実施前)</th>
-                            <th width="80">PV(現在)</th>
-                            <th width="80">変化</th>
+                            <th width="80" style="cursor:pointer" class="sortable" data-sort="pv_current">PV(現在) ▼</th>
+                            <th width="80" style="cursor:pointer" class="sortable" data-sort="pv_change">変化 ▼</th>
                             <th width="80">操作</th>
                         </tr>
                     </thead>
@@ -4688,10 +5134,14 @@ class GI_SEO_Content_Manager {
         jQuery(function($){
             var nonce = '<?php echo $nonce; ?>';
             var currentPage = 1;
+            var currentSort = 'renovated_desc';
 
-            function loadStats(page) {
+            function loadStats(page, sort) {
                 currentPage = page || 1;
-                $.post(ajaxurl, {action:'gi_seo_get_renovation_stats',nonce:nonce,page:currentPage,per_page:50}, function(r){
+                currentSort = sort || currentSort;
+                $('#pv-stats-tbody').html('<tr><td colspan="7" style="text-align:center;padding:30px;">読み込み中...</td></tr>');
+                
+                $.post(ajaxurl, {action:'gi_seo_get_renovation_stats',nonce:nonce,page:currentPage,per_page:50,sort:currentSort}, function(r){
                     if(r.success){
                         if(r.data.stats.length === 0){
                             $('#pv-stats-tbody').html('<tr><td colspan="7" style="text-align:center;">データなし</td></tr>');
@@ -4703,9 +5153,10 @@ class GI_SEO_Content_Manager {
                             var pvDiff = stat.pv_change;
                             var pvClass = pvDiff >= 0 ? 'gi-pv-up' : 'gi-pv-down';
                             var pvSign = pvDiff >= 0 ? '+' : '';
+                            var url = stat.url || '/?p='+stat.post_id;
                             
                             html += '<tr>';
-                            html += '<td><a href="/?p='+stat.post_id+'" target="_blank">'+stat.post_title+'</a></td>';
+                            html += '<td><a href="'+url+'" target="_blank">'+stat.post_title+'</a></td>';
                             html += '<td>'+(stat.renovated_at ? stat.renovated_at.substring(0,10) : '-')+'</td>';
                             html += '<td>'+stat.original_char_count+' → '+stat.new_char_count+'</td>';
                             html += '<td>'+stat.pv_before+'</td>';
@@ -4727,7 +5178,11 @@ class GI_SEO_Content_Manager {
 
             loadStats();
 
-            $(document).on('click', '.pv-stats-page', function(){ loadStats($(this).data('page')); });
+            // ソート変更
+            $('#pv-sort').change(function(){ loadStats(1, $(this).val()); });
+            $('#btn-pv-reload').click(function(){ loadStats(currentPage, currentSort); });
+            
+            $(document).on('click', '.pv-stats-page', function(){ loadStats($(this).data('page'), currentSort); });
 
             $(document).on('click', '.btn-show-chart', function(){
                 var id = $(this).data('id');
@@ -4946,15 +5401,25 @@ class GI_SEO_Content_Manager {
 
             <div class="gi-card">
                 <h3>🔗 投稿照合</h3>
-                <p style="color:#666;font-size:13px;">補助金DBと投稿記事を照合し、すでに記事化されているかを自動判定します。</p>
-                <div style="margin-bottom:15px;">
+                <p style="color:#666;font-size:13px;">補助金DBの各タイトルから補助金名を抽出し、WP投稿のタイトルに含まれているかを照合します。</p>
+                <div style="margin-bottom:15px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                    <label><input type="checkbox" id="skip-matched" checked> 既に登録済みのものを除外</label>
                     <button class="gi-btn gi-btn-success" id="btn-sync-posts">🔄 投稿と照合開始</button>
                     <button class="gi-btn" id="btn-stop-sync" style="display:none;">停止</button>
+                    <button class="gi-btn" id="btn-debug-match" style="background:#f0f0f0;">🔍 デバッグ</button>
                 </div>
                 <div class="gi-progress" id="sync-progress-container" style="display:none;">
                     <div class="gi-progress-bar" id="sync-progress-bar" style="width:0%"></div>
                 </div>
                 <div id="sync-progress-text" style="font-size:12px;color:#666;"></div>
+                <div id="debug-output" style="display:none; margin-top:15px; padding:15px; background:#f9f9f9; border:1px solid #ddd; border-radius:4px; max-height:400px; overflow:auto; font-size:12px;"></div>
+                
+                <div style="margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
+                    <strong>再スキャン:</strong>
+                    <button class="gi-btn gi-btn-sm" id="btn-reset-all-matches" style="margin-left:10px;">🔄 全マッチをリセット</button>
+                    <button class="gi-btn gi-btn-sm" id="btn-reset-selected-matches">🔄 選択をリセット</button>
+                    <span style="color:#666;font-size:12px;margin-left:10px;">※リセット後に再照合すると、新しいロジックで再スキャンされます</span>
+                </div>
             </div>
 
             <div class="gi-card">
@@ -5231,35 +5696,83 @@ class GI_SEO_Content_Manager {
                 $(this).prop('disabled', true);
                 $('#btn-stop-sync').show();
                 $('#sync-progress-container').show();
+                $('#sync-progress-text').text('初期化中...');
                 
+                var skipMatched = $('#skip-matched').is(':checked');
+                var batchSize = 50;
+                var totalItems = 0;
                 var offset = 0, totalMatched = 0, totalProcessed = 0;
+                
+                // まず総件数を取得
+                $.post(ajaxurl, {
+                    action: 'gi_subsidy_sync_posts',
+                    nonce: nonce,
+                    init: 'true',
+                    skip_matched: skipMatched ? 'true' : 'false'
+                }, function(initR){
+                    if(initR.success && initR.data.init){
+                        totalItems = initR.data.total;
+                        $('#sync-progress-text').text('対象: ' + totalItems + '件の補助金データをスキャンします');
+                        
+                        if(totalItems === 0){
+                            finish();
+                            return;
+                        }
+                        
+                        setTimeout(batch, 300);
+                    } else {
+                        alert('初期化エラー');
+                        finish();
+                    }
+                }).fail(function(){
+                    alert('通信エラー');
+                    finish();
+                });
                 
                 function batch() {
                     if(!syncing) { finish(); return; }
                     
-                    $.post(ajaxurl, {action:'gi_subsidy_sync_posts',nonce:nonce,limit:50,offset:offset}, function(r){
+                    $.post(ajaxurl, {
+                        action: 'gi_subsidy_sync_posts',
+                        nonce: nonce,
+                        limit: batchSize,
+                        offset: offset,
+                        skip_matched: skipMatched ? 'true' : 'false'
+                    }, function(r){
                         if(r.success){
                             totalProcessed += r.data.processed;
                             totalMatched += r.data.matched;
                             
-                            var remaining = r.data.remaining;
-                            var total = totalProcessed + remaining;
-                            var progress = total > 0 ? (totalProcessed / total * 100) : 100;
+                            // 正確なプログレス計算（補助金DB件数ベース）
+                            var progress = totalItems > 0 ? Math.min((totalProcessed / totalItems) * 100, 100) : 100;
                             
-                            $('#sync-progress-bar').css('width', progress + '%');
-                            $('#sync-progress-text').text('処理: ' + totalProcessed + '件 / マッチ: ' + totalMatched + '件 / 残り: ' + remaining + '件');
+                            $('#sync-progress-bar').css('width', progress.toFixed(1) + '%');
+                            $('#sync-progress-text').html(
+                                '<strong>補助金DB照合中</strong>: ' + totalProcessed + ' / ' + totalItems + '件' +
+                                ' | マッチ: <span style="color:#090;font-weight:bold;">' + totalMatched + '件</span>' +
+                                ' | 残り: ' + r.data.remaining + '件'
+                            );
                             
-                            loadStats();
+                            // 統計更新（10バッチごと）
+                            if(totalProcessed % (batchSize * 10) === 0) {
+                                loadStats();
+                            }
                             
-                            if(r.data.has_more && syncing){
-                                offset += 50;
-                                setTimeout(batch, 300);
+                            if(r.data.has_more && syncing && r.data.remaining > 0){
+                                offset = r.data.next_offset;
+                                setTimeout(batch, 100);
                             } else {
                                 finish();
                             }
                         } else {
-                            finish();
+                            console.error('Sync error:', r);
+                            // エラー時はリトライ
+                            setTimeout(batch, 1000);
                         }
+                    }).fail(function(xhr){
+                        console.error('Ajax error:', xhr);
+                        // 通信エラー時もリトライ
+                        setTimeout(batch, 2000);
                     });
                 }
                 
@@ -5267,16 +5780,78 @@ class GI_SEO_Content_Manager {
                     syncing = false;
                     $('#btn-sync-posts').prop('disabled', false);
                     $('#btn-stop-sync').hide();
-                    $('#sync-progress-text').text('完了: ' + totalProcessed + '件処理、' + totalMatched + '件マッチ');
+                    $('#sync-progress-bar').css('width', '100%');
+                    $('#sync-progress-text').html(
+                        '<strong style="color:#090;">✓ 完了</strong>: ' + totalProcessed + '件処理、' +
+                        '<strong>' + totalMatched + '件マッチ</strong>'
+                    );
+                    loadStats();
                     loadSubsidies(currentPage);
                 }
-                
-                batch();
             });
 
             $('#btn-stop-sync').click(function(){
                 syncing = false;
                 $(this).hide();
+            });
+            
+            // デバッグボタン
+            $('#btn-debug-match').click(function(){
+                var btn = $(this);
+                btn.prop('disabled', true).text('確認中...');
+                $('#debug-output').show().html('デバッグ情報を取得中...');
+                
+                $.post(ajaxurl, {action:'gi_subsidy_debug_match', nonce:nonce}, function(r){
+                    btn.prop('disabled', false).text('🔍 デバッグ');
+                    
+                    if(r.success){
+                        var html = '<h4>📊 データ概要</h4>';
+                        html += '<p>補助金DB総数: <strong>' + r.data.total_subsidies + '</strong>件 / 未マッチ: <strong>' + r.data.unmatched_subsidies + '</strong>件</p>';
+                        
+                        html += '<h4>🔍 WP投稿（補助金・助成金を含む）- サンプル</h4>';
+                        if(r.data.wp_posts_with_subsidy.length > 0){
+                            html += '<ul style="max-height:150px;overflow:auto;">';
+                            r.data.wp_posts_with_subsidy.forEach(function(p){
+                                html += '<li><a href="/?p=' + p.ID + '" target="_blank">' + p.post_title + '</a> (ID:' + p.ID + ')</li>';
+                            });
+                            html += '</ul>';
+                        } else {
+                            html += '<p style="color:red;">⚠️ WP投稿に「補助金」「助成金」を含む記事が見つかりません！</p>';
+                        }
+                        
+                        html += '<h4>🧪 マッチングテスト（未マッチ補助金5件）</h4>';
+                        r.data.debug_results.forEach(function(d){
+                            html += '<div style="margin-bottom:15px;padding:10px;background:#fff;border:1px solid #ddd;">';
+                            html += '<p><strong>補助金タイトル:</strong> ' + d.subsidy_title + '</p>';
+                            html += '<p><strong>都道府県:</strong> ' + (d.prefecture || '(なし)') + '</p>';
+                            html += '<p><strong>抽出された補助金名:</strong> ';
+                            if(d.extracted_names.length > 0){
+                                html += '<span style="color:green;">' + d.extracted_names.join(', ') + '</span>';
+                            } else {
+                                html += '<span style="color:red;">抽出できませんでした</span>';
+                            }
+                            html += '</p>';
+                            html += '<p><strong>マッチした投稿:</strong> ';
+                            if(d.found_posts.length > 0){
+                                html += '<ul>';
+                                d.found_posts.forEach(function(fp){
+                                    html += '<li><a href="/?p=' + fp.id + '" target="_blank">' + fp.title + '</a> (マッチ: ' + fp.matched_by + ')</li>';
+                                });
+                                html += '</ul>';
+                            } else {
+                                html += '<span style="color:orange;">なし</span>';
+                            }
+                            html += '</p></div>';
+                        });
+                        
+                        $('#debug-output').html(html);
+                    } else {
+                        $('#debug-output').html('<p style="color:red;">エラー: ' + r.data + '</p>');
+                    }
+                }).fail(function(){
+                    btn.prop('disabled', false).text('🔍 デバッグ');
+                    $('#debug-output').html('<p style="color:red;">通信エラー</p>');
+                });
             });
 
             $(document).on('click', '.btn-check-exists', function(){
@@ -5291,9 +5866,56 @@ class GI_SEO_Content_Manager {
                         if(r.data.found){
                             alert('マッチ発見！\n\n→ ' + r.data.post_title + '\nスコア: ' + r.data.score);
                             loadSubsidies(currentPage);
+                            loadStats();
                         } else {
                             alert('マッチする投稿が見つかりませんでした');
                         }
+                    } else {
+                        alert('エラー: ' + r.data);
+                    }
+                });
+            });
+            
+            // 全マッチリセット
+            $('#btn-reset-all-matches').click(function(){
+                if(!confirm('全ての補助金のマッチ情報をリセットしますか？\n再照合で新しいロジックで再スキャンできます。')) return;
+                
+                var btn = $(this);
+                btn.prop('disabled', true).text('リセット中...');
+                
+                $.post(ajaxurl, {action:'gi_subsidy_reset_matches', nonce:nonce, mode:'all'}, function(r){
+                    btn.prop('disabled', false).text('🔄 全マッチをリセット');
+                    if(r.success){
+                        alert(r.data.message);
+                        loadStats();
+                        loadSubsidies(currentPage);
+                    } else {
+                        alert('エラー: ' + r.data);
+                    }
+                });
+            });
+            
+            // 選択リセット
+            $('#btn-reset-selected-matches').click(function(){
+                var ids = [];
+                $('.subsidy-check:checked').each(function(){ ids.push($(this).val()); });
+                
+                if(ids.length === 0){
+                    alert('リセット対象を選択してください');
+                    return;
+                }
+                
+                if(!confirm(ids.length + '件のマッチ情報をリセットしますか？')) return;
+                
+                var btn = $(this);
+                btn.prop('disabled', true).text('リセット中...');
+                
+                $.post(ajaxurl, {action:'gi_subsidy_reset_matches', nonce:nonce, mode:'selected', ids:ids}, function(r){
+                    btn.prop('disabled', false).text('🔄 選択をリセット');
+                    if(r.success){
+                        alert(r.data.message);
+                        loadStats();
+                        loadSubsidies(currentPage);
                     } else {
                         alert('エラー: ' + r.data);
                     }
@@ -5431,7 +6053,22 @@ class GI_SEO_Content_Manager {
             });
 
             $('#btn-subsidy-export').click(function(){
-                $.post(ajaxurl, {action:'gi_subsidy_export',nonce:nonce}, function(r){
+                // 現在のフィルター条件を取得
+                var exportData = {
+                    action: 'gi_subsidy_export',
+                    nonce: nonce,
+                    search: $('#subsidy-search').val(),
+                    prefecture: $('#subsidy-prefecture').val(),
+                    status: $('#subsidy-status-filter').val(),
+                    exists_filter: $('#subsidy-exists-filter').val()
+                };
+                
+                var btn = $(this);
+                btn.prop('disabled', true).text('エクスポート中...');
+                
+                $.post(ajaxurl, exportData, function(r){
+                    btn.prop('disabled', false).text('📤 エクスポート');
+                    
                     if(r.success){
                         var tsv = '';
                         r.data.data.forEach(function(row){
@@ -5443,11 +6080,25 @@ class GI_SEO_Content_Manager {
                         var blob = new Blob([new Uint8Array([0xEF,0xBB,0xBF]), tsv], {type:'text/tab-separated-values'});
                         var a = document.createElement('a');
                         a.href = URL.createObjectURL(blob);
-                        a.download = 'subsidy_db_'+new Date().toISOString().slice(0,10)+'.tsv';
+                        
+                        // ファイル名にフィルター情報を含める
+                        var filename = 'subsidy_db_' + new Date().toISOString().slice(0,10);
+                        if($('#subsidy-exists-filter').val() === 'not_exists') filename += '_記事なし';
+                        if($('#subsidy-exists-filter').val() === 'exists') filename += '_記事あり';
+                        if($('#subsidy-status-filter').val()) filename += '_' + $('#subsidy-status-filter').val();
+                        if($('#subsidy-prefecture').val()) filename += '_' + $('#subsidy-prefecture').val();
+                        filename += '.tsv';
+                        
+                        a.download = filename;
                         a.click();
                         
-                        alert(r.data.count + '件エクスポートしました（TSV形式）');
+                        alert('エクスポート完了\n\n' + r.data.count + '件\nフィルター: ' + r.data.filter_info);
+                    } else {
+                        alert('エラー: ' + r.data);
                     }
+                }).fail(function(){
+                    btn.prop('disabled', false).text('📤 エクスポート');
+                    alert('通信エラーが発生しました');
                 });
             });
 
@@ -5549,12 +6200,28 @@ class GI_SEO_Content_Manager {
                 </div>
 
                 <div class="gi-card">
-                    <h3>📄 カスタムプロンプト</h3>
-                    <div class="gi-form-desc" style="margin-bottom:10px;">
-                        空欄の場合はデフォルトプロンプトが使用されます。<br>
-                        使用可能な変数: {title}, {content}, {seed_keyword}, {keyphrase}, {keywords}, {suggests}, {related_posts}
+                    <h3>📄 AIリノベーション・カスタムプロンプト</h3>
+                    <div class="gi-form-desc" style="margin-bottom:15px; padding:15px; background:#f5f5f5; border-radius:4px;">
+                        <p style="margin:0 0 10px 0;"><strong>空欄の場合はデフォルトプロンプトが使用されます。</strong></p>
+                        <p style="margin:0 0 10px 0;">使用可能な変数（プロンプト内で自動的に置換されます）:</p>
+                        <ul style="margin:0;padding-left:20px;font-size:12px;">
+                            <li><code>{title}</code> - 記事タイトル</li>
+                            <li><code>{content}</code> - 記事本文（HTML）</li>
+                            <li><code>{seed_keyword}</code> - 抽出されたシードキーワード</li>
+                            <li><code>{keyphrase}</code> - 抽出されたキーフレーズ</li>
+                            <li><code>{keywords}</code> - 重要キーワードリスト（カンマ区切り）</li>
+                            <li><code>{suggests}</code> - Googleサジェストキーワード（カンマ区切り）</li>
+                            <li><code>{related_posts}</code> - 関連記事リスト</li>
+                        </ul>
                     </div>
-                    <textarea class="gi-textarea" name="custom_prompt"><?php echo esc_textarea($settings['custom_prompt'] ?? ''); ?></textarea>
+                    <div style="margin-bottom:10px;">
+                        <button type="button" class="gi-btn" id="btn-load-default-prompt">📋 デフォルトプロンプトを読み込む</button>
+                        <button type="button" class="gi-btn" id="btn-clear-prompt">🗑 クリア</button>
+                    </div>
+                    <textarea class="gi-textarea" name="custom_prompt" style="height:400px;font-size:12px;line-height:1.5;"><?php echo esc_textarea($settings['custom_prompt'] ?? ''); ?></textarea>
+                    <div class="gi-form-desc" style="margin-top:10px;">
+                        ヒント: プロンプトの最初に「【絶対厳守ルール】」を入れると、AIの出力フォーマットを制御しやすくなります。
+                    </div>
                 </div>
 
                 <button type="submit" class="gi-btn gi-btn-primary">💾 設定を保存</button>
@@ -5594,6 +6261,77 @@ class GI_SEO_Content_Manager {
         <script>
         jQuery(function($){
             var nonce = '<?php echo $nonce; ?>';
+            
+            // デフォルトプロンプト
+            var defaultPrompt = `以下の記事をリノベーションしてください。
+
+【絶対厳守ルール】
+- 前置き・挨拶・説明文は一切不要
+- 「承知しました」「SEOの専門家として」などの文言は絶対に含めない
+- HTMLコードのみを出力する
+- 出力の最初の文字は必ず「<」で始める
+- 内部リンクは地域やテーマが一致する場合のみ設置する
+
+## 対象記事
+タイトル: {title}
+
+本文:
+{content}
+
+## キーワード
+- シード: {seed_keyword}
+- キーフレーズ: {keyphrase}
+- 重要語: {keywords}
+
+## Googleサジェスト（必ず網羅）
+{suggests}
+
+## 内部リンク設置（地域・キーワードが一致する記事のみ）
+{related_posts}
+
+## デザインルール
+シンプルな白黒ベースのHTMLで出力。以下のスタイルを使用：
+
+**ポイントボックス**
+<div style="background:#f5f5f5; border:1px solid #333; padding:20px; margin:20px 0;">
+<h4 style="margin:0 0 10px 0; color:#333;">■ ポイント</h4>
+<p style="margin:0;">内容</p>
+</div>
+
+**注意ボックス**
+<div style="background:#fff; border-left:4px solid #333; padding:15px; margin:20px 0;">
+<strong>注意：</strong>内容
+</div>
+
+**テーブル**
+<table style="width:100%; border-collapse:collapse; margin:20px 0;">
+<tr style="background:#333; color:#fff;"><th style="padding:10px; border:1px solid #333;">項目</th><th style="padding:10px; border:1px solid #333;">内容</th></tr>
+<tr><td style="padding:10px; border:1px solid #ddd;">項目名</td><td style="padding:10px; border:1px solid #ddd;">内容</td></tr>
+</table>
+
+**Q&A**
+<div style="margin:20px 0;">
+<div style="background:#333; color:#fff; padding:10px 15px;">Q. 質問</div>
+<div style="background:#f5f5f5; padding:15px; border:1px solid #ddd; border-top:none;">A. 回答</div>
+</div>
+
+## 出力形式（厳守）
+<!-- META_DESCRIPTION: 120文字以内の要約 -->
+<!-- TITLE: 改善後タイトル（必要な場合） -->
+<h2>最初の見出し</h2>
+（以降HTMLコード本文）`;
+            
+            $('#btn-load-default-prompt').click(function(){
+                if($('textarea[name="custom_prompt"]').val().trim() !== '') {
+                    if(!confirm('現在のプロンプトを上書きしますか？')) return;
+                }
+                $('textarea[name="custom_prompt"]').val(defaultPrompt);
+            });
+            
+            $('#btn-clear-prompt').click(function(){
+                if(!confirm('プロンプトをクリアしますか？（デフォルトプロンプトが使用されます）')) return;
+                $('textarea[name="custom_prompt"]').val('');
+            });
             
             $('#settings-form').submit(function(e){
                 e.preventDefault();

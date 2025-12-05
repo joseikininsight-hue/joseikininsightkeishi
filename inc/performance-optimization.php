@@ -414,17 +414,11 @@ class GI_Performance_Optimizer {
             transform: translateY(-4px);
         }
         
-        /* デフォルトで全要素のtransitionを無効化（パフォーマンス向上） */
-        * {
-            transition: none !important;
-        }
-        
-        /* インタラクティブ要素のみtransitionを有効化 */
-        button, a, input, textarea, select, 
-        .search-input, .card, .card-item, .grant-card,
-        .button, .btn, .link {
-            transition: revert !important;
-        }
+        /* 
+         * ⚠️ 削除: * { transition: none !important } 
+         * 理由: 全称セレクタへの!importantはブラウザに極端な負荷をかけ、
+         * ページのカクカク（Reflow）の主要原因となるため削除
+         */
         
         /* ローディング状態 */
         .loading-skeleton {

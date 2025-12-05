@@ -4,7 +4,7 @@
  * E-E-A-T・SEO・UI・UX 最適化版
  * 
  * @package Joseikin_Insight_Footer
- * @version 7.0.0
+ * @version 8.0.0
  */
 
 // SNS URLヘルパー関数
@@ -76,7 +76,7 @@ if (!function_exists('gi_get_cached_stats')) {
     <style>
         /* ===============================================
            JOSEIKIN INSIGHT - ULTIMATE FOOTER
-           E-E-A-T・SEO・UI・UX 最適化版
+           E-E-A-T・SEO・UI・UX 最適化版 v8.0
            =============================================== */
         
         :root {
@@ -369,7 +369,7 @@ if (!function_exists('gi_get_cached_stats')) {
         
         @media (min-width: 1024px) {
             .ji-nav-grid {
-                grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;
+                grid-template-columns: 1.8fr 1fr 1fr 1fr;
                 gap: 2rem;
             }
         }
@@ -435,7 +435,7 @@ if (!function_exists('gi_get_cached_stats')) {
             color: var(--footer-text-secondary);
             line-height: 1.7;
             margin-bottom: 1.5rem;
-            max-width: 280px;
+            max-width: 300px;
         }
         
         /* Social Links */
@@ -486,6 +486,9 @@ if (!function_exists('gi_get_cached_stats')) {
             display: flex;
             flex-direction: column;
             gap: 0.625rem;
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
         
         .ji-nav-link {
@@ -832,49 +835,12 @@ if (!function_exists('gi_get_cached_stats')) {
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/calculator/')); ?>" class="ji-nav-link">
-                                    計算ツール
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <!-- Learn Column -->
-                    <div class="ji-nav-column">
-                        <h3 class="ji-nav-title">学ぶ</h3>
-                        <ul class="ji-nav-list">
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/how-to-use/')); ?>" class="ji-nav-link">
-                                    使い方ガイド
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/knowledge/')); ?>" class="ji-nav-link">
-                                    基礎知識
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/faq/')); ?>" class="ji-nav-link">
-                                    よくある質問
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/glossary/')); ?>" class="ji-nav-link">
-                                    用語集
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
                         </ul>
                     </div>
                     
                     <!-- News Column -->
                     <div class="ji-nav-column">
-                        <h3 class="ji-nav-title">ニュース</h3>
+                        <h3 class="ji-nav-title">コンテンツ</h3>
                         <ul class="ji-nav-list">
                             <li>
                                 <a href="<?php echo esc_url(home_url('/column/')); ?>" class="ji-nav-link">
@@ -902,32 +868,8 @@ if (!function_exists('gi_get_cached_stats')) {
                                 </a>
                             </li>
                             <li>
-                                <a href="<?php echo esc_url(home_url('/support/')); ?>" class="ji-nav-link">
-                                    ヘルプセンター
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
                                 <a href="<?php echo esc_url(home_url('/about/')); ?>" class="ji-nav-link">
                                     運営者情報
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/supervisors/')); ?>" class="ji-nav-link">
-                                    監修者一覧
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/editorial-policy/')); ?>" class="ji-nav-link">
-                                    編集ポリシー
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/sitemap/')); ?>" class="ji-nav-link">
-                                    サイトマップ
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>

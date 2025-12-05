@@ -2,9 +2,10 @@
 /**
  * JOSEIKIN INSIGHT - Perfect Header
  * SEO Cleaned版 - Yoast SEO完全対応
+ * ホバー廃止・クリック式メニュー
  * 
  * @package Joseikin_Insight_Header
- * @version 9.1.0 (SEO Cleaned)
+ * @version 10.0.0 (Click Menu Edition)
  */
 
 if (!defined('ABSPATH')) {
@@ -53,9 +54,6 @@ $header_data = ji_get_header_data();
     <meta charset="<?php bloginfo('charset'); ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    
-    <!-- SEOタグ（title, description, canonical, OGP, Twitter Card, 構造化データ）は
-         すべてYoast SEOプラグインが wp_head() 経由で出力します -->
     
     <meta name="format-detection" content="telephone=no, email=no, address=no">
     <meta name="theme-color" content="#000000">
@@ -345,16 +343,6 @@ $header_data = ji_get_header_data();
             pointer-events: auto;
         }
         
-        .ji-mega-menu::before {
-            content: '';
-            position: absolute;
-            top: -20px;
-            left: 0;
-            right: 0;
-            height: 20px;
-            background: transparent;
-        }
-        
         .ji-mega-menu-inner {
             max-width: var(--max-width);
             margin: 0 auto;
@@ -403,6 +391,11 @@ $header_data = ji_get_header_data();
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 40px;
+        }
+        
+        .ji-mega-menu-grid.cols-1 {
+            grid-template-columns: 1fr;
+            max-width: 400px;
         }
         
         .ji-mega-menu-grid.cols-2 {
@@ -1054,6 +1047,37 @@ $header_data = ji_get_header_data();
             outline-offset: -2px;
         }
         
+        /* 単独リンク（ドロップダウンなし） */
+        .ji-mobile-single-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 0;
+            color: var(--white);
+            font-size: 1.0625rem;
+            font-weight: 600;
+            text-align: left;
+            min-height: 60px;
+            transition: all var(--transition);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .ji-mobile-single-link:hover {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .ji-mobile-single-link:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: -2px;
+            border-radius: 8px;
+        }
+        
+        .ji-mobile-single-link i {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.75rem;
+        }
+        
         .ji-mobile-cta {
             background: var(--white);
             color: var(--black);
@@ -1202,14 +1226,6 @@ $header_data = ji_get_header_data();
             outline-offset: 2px;
         }
         
-        @media (hover: none) and (pointer: coarse) {
-            .ji-nav-link:hover,
-            .ji-mega-link:hover,
-            .ji-prefecture-link:hover {
-                background: transparent;
-            }
-        }
-        
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after {
                 animation-duration: 0.01ms !important;
@@ -1252,15 +1268,14 @@ $header_data = ji_get_header_data();
             
             <!-- サービス一覧 -->
             <div class="ji-nav-item" data-menu="services">
-                <a href="<?php echo esc_url($grants_url); ?>" 
+                <button type="button" 
                    class="ji-nav-link" 
-                   <?php echo $is_grants_page ? 'aria-current="page"' : ''; ?>
                    aria-haspopup="true"
                    aria-expanded="false">
                     <i class="fas fa-list-ul ji-icon" aria-hidden="true"></i>
                     <span>サービス一覧</span>
                     <i class="fas fa-chevron-down ji-chevron" aria-hidden="true"></i>
-                </a>
+                </button>
                 
                 <div class="ji-mega-menu" role="menu" aria-label="サービス一覧メニュー">
                     <div class="ji-mega-menu-inner">
@@ -1339,72 +1354,17 @@ $header_data = ji_get_header_data();
                 </div>
             </div>
             
-            <!-- 便利ツール -->
-            <div class="ji-nav-item" data-menu="tools">
-                <button type="button" class="ji-nav-link" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-tools ji-icon" aria-hidden="true"></i>
-                    <span>便利ツール</span>
-                    <i class="fas fa-chevron-down ji-chevron" aria-hidden="true"></i>
-                </button>
-                
-                <div class="ji-mega-menu" role="menu" aria-label="便利ツールメニュー">
-                    <div class="ji-mega-menu-inner">
-                        <div class="ji-mega-menu-grid cols-2">
-                            <div class="ji-mega-column">
-                                <div class="ji-mega-column-title">診断・シミュレーション</div>
-                                <a href="<?php echo esc_url(home_url('/subsidy-diagnosis/')); ?>" class="ji-mega-link" role="menuitem">
-                                    <i class="fas fa-stethoscope" style="color: var(--primary-light); margin-right: 8px;"></i>
-                                    補助金・助成金診断システム
-                                    <span class="ji-badge new">人気</span>
-                                </a>
-                                <a href="<?php echo esc_url(home_url('/calculator/')); ?>" class="ji-mega-link" role="menuitem">
-                                    <i class="fas fa-calculator" style="color: var(--primary-light); margin-right: 8px;"></i>
-                                    補助金・助成金計算ツール
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- 補助金診断（直接リンク） -->
+            <a href="<?php echo esc_url(home_url('/subsidy-diagnosis/')); ?>" class="ji-nav-link">
+                <i class="fas fa-stethoscope ji-icon" aria-hidden="true"></i>
+                <span>補助金診断</span>
+            </a>
             
-            <!-- 初めての方へ -->
-            <div class="ji-nav-item" data-menu="guide">
-                <button type="button" class="ji-nav-link" aria-haspopup="true" aria-expanded="false">
-                    <i class="fas fa-graduation-cap ji-icon" aria-hidden="true"></i>
-                    <span>初めての方へ</span>
-                    <i class="fas fa-chevron-down ji-chevron" aria-hidden="true"></i>
-                </button>
-                
-                <div class="ji-mega-menu" role="menu" aria-label="初めての方へメニュー">
-                    <div class="ji-mega-menu-inner">
-                        <div class="ji-mega-menu-grid cols-3">
-                            <div class="ji-mega-column">
-                                <div class="ji-mega-column-title">サイトについて</div>
-                                <a href="<?php echo esc_url(home_url('/about/')); ?>" class="ji-mega-link" role="menuitem">助成金インサイトとは</a>
-                                <a href="<?php echo esc_url(home_url('/supervisors/')); ?>" class="ji-mega-link" role="menuitem">監修者・運営体制<span class="ji-badge">信頼</span></a>
-                                <a href="<?php echo esc_url(home_url('/editorial-policy/')); ?>" class="ji-mega-link" role="menuitem">編集ポリシー</a>
-                                <a href="<?php echo esc_url(home_url('/how-to-use/')); ?>" class="ji-mega-link" role="menuitem">使い方ガイド</a>
-                                <a href="<?php echo esc_url(home_url('/faq/')); ?>" class="ji-mega-link" role="menuitem">よくある質問</a>
-                            </div>
-                            
-                            <div class="ji-mega-column">
-                                <div class="ji-mega-column-title">基礎知識</div>
-                                <a href="<?php echo esc_url(home_url('/knowledge/')); ?>" class="ji-mega-link" role="menuitem">補助金・助成金とは</a>
-                                <a href="<?php echo esc_url(home_url('/knowledge/how-to-apply/')); ?>" class="ji-mega-link" role="menuitem">申請方法の基本</a>
-                                <a href="<?php echo esc_url(home_url('/knowledge/tips/')); ?>" class="ji-mega-link" role="menuitem">採択されるコツ</a>
-                                <a href="<?php echo esc_url(home_url('/knowledge/common-mistakes/')); ?>" class="ji-mega-link" role="menuitem">よくある失敗例</a>
-                            </div>
-                            
-                            <div class="ji-mega-column">
-                                <div class="ji-mega-column-title">用語・リソース</div>
-                                <a href="<?php echo esc_url(home_url('/glossary/')); ?>" class="ji-mega-link" role="menuitem">用語集</a>
-                                <a href="<?php echo esc_url(home_url('/resources/')); ?>" class="ji-mega-link" role="menuitem">お役立ち資料</a>
-                                <a href="<?php echo esc_url(home_url('/column/')); ?>" class="ji-mega-link" role="menuitem">コラム・記事</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <!-- 当サイトについて（直接リンク） -->
+            <a href="<?php echo esc_url(home_url('/about/')); ?>" class="ji-nav-link">
+                <i class="fas fa-info-circle ji-icon" aria-hidden="true"></i>
+                <span>当サイトについて</span>
+            </a>
             
             <a href="<?php echo esc_url(home_url('/column/')); ?>" class="ji-nav-link">
                 <i class="fas fa-newspaper ji-icon" aria-hidden="true"></i>
@@ -1515,6 +1475,7 @@ $header_data = ji_get_header_data();
     
     <div class="ji-mobile-content">
         <div class="ji-mobile-section">
+            <!-- サービス一覧（アコーディオン） -->
             <div class="ji-mobile-accordion">
                 <button type="button" class="ji-mobile-accordion-trigger" aria-expanded="false" aria-controls="accordion-services">
                     <span>サービス一覧</span>
@@ -1530,44 +1491,29 @@ $header_data = ji_get_header_data();
                 </div>
             </div>
             
-            <div class="ji-mobile-accordion">
-                <button type="button" class="ji-mobile-accordion-trigger" aria-expanded="false" aria-controls="accordion-tools">
-                    <span>便利ツール</span>
-                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                </button>
-                <div id="accordion-tools" class="ji-mobile-accordion-content">
-                    <a href="<?php echo esc_url(home_url('/subsidy-diagnosis/')); ?>" class="ji-mobile-link">補助金診断システム</a>
-                    <a href="<?php echo esc_url(home_url('/calculator/')); ?>" class="ji-mobile-link">補助金計算ツール</a>
-                </div>
-            </div>
+            <!-- 補助金診断（単独リンク） -->
+            <a href="<?php echo esc_url(home_url('/subsidy-diagnosis/')); ?>" class="ji-mobile-single-link">
+                <span>補助金診断</span>
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </a>
             
-            <div class="ji-mobile-accordion">
-                <button type="button" class="ji-mobile-accordion-trigger" aria-expanded="false" aria-controls="accordion-guide">
-                    <span>初めての方へ</span>
-                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                </button>
-                <div id="accordion-guide" class="ji-mobile-accordion-content">
-                    <a href="<?php echo esc_url(home_url('/about/')); ?>" class="ji-mobile-link">助成金インサイトとは</a>
-                    <a href="<?php echo esc_url(home_url('/how-to-use/')); ?>" class="ji-mobile-link">使い方ガイド</a>
-                    <a href="<?php echo esc_url(home_url('/knowledge/')); ?>" class="ji-mobile-link">補助金の基礎知識</a>
-                    <a href="<?php echo esc_url(home_url('/faq/')); ?>" class="ji-mobile-link">よくある質問</a>
-                    <a href="<?php echo esc_url(home_url('/glossary/')); ?>" class="ji-mobile-link">用語集</a>
-                </div>
-            </div>
+            <!-- 当サイトについて（単独リンク） -->
+            <a href="<?php echo esc_url(home_url('/about/')); ?>" class="ji-mobile-single-link">
+                <span>当サイトについて</span>
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </a>
             
-            <div class="ji-mobile-accordion">
-                <button type="button" class="ji-mobile-accordion-trigger" aria-expanded="false" aria-controls="accordion-support">
-                    <span>サポート</span>
-                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                </button>
-                <div id="accordion-support" class="ji-mobile-accordion-content">
-                    <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="ji-mobile-link">お問い合わせ</a>
-                    <a href="<?php echo esc_url(home_url('/support/')); ?>" class="ji-mobile-link">ヘルプセンター</a>
-                    <a href="<?php echo esc_url(home_url('/column/')); ?>" class="ji-mobile-link">ニュース・コラム</a>
-                    <a href="<?php echo esc_url(home_url('/privacy/')); ?>" class="ji-mobile-link">プライバシーポリシー</a>
-                    <a href="<?php echo esc_url(home_url('/terms/')); ?>" class="ji-mobile-link">利用規約</a>
-                </div>
-            </div>
+            <!-- ニュース（単独リンク） -->
+            <a href="<?php echo esc_url(home_url('/column/')); ?>" class="ji-mobile-single-link">
+                <span>ニュース</span>
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </a>
+            
+            <!-- お問い合わせ（単独リンク） -->
+            <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="ji-mobile-single-link">
+                <span>お問い合わせ</span>
+                <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </a>
         </div>
         
         <a href="<?php echo esc_url($grants_url); ?>" class="ji-mobile-cta">
@@ -1631,19 +1577,23 @@ $header_data = ji_get_header_data();
     let isSearchOpen = false;
     let isMobileMenuOpen = false;
     let ticking = false;
-    let activeNavItem = null;
-    let menuCloseTimeout = null;
     
+    // クリック式メガメニュー（ホバー廃止）
     function initMegaMenus() {
         navItems.forEach(item => {
             const link = item.querySelector('.ji-nav-link');
             const menu = item.querySelector('.ji-mega-menu');
             
-            if (!menu) return;
+            if (!menu || !link) return;
             
-            item.addEventListener('mouseenter', () => {
-                clearTimeout(menuCloseTimeout);
+            // クリックでトグル
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 
+                const isExpanded = item.classList.contains('menu-active');
+                
+                // 他のメニューを閉じる
                 navItems.forEach(otherItem => {
                     if (otherItem !== item) {
                         otherItem.classList.remove('menu-active');
@@ -1652,72 +1602,32 @@ $header_data = ji_get_header_data();
                     }
                 });
                 
-                item.classList.add('menu-active');
-                if (link) link.setAttribute('aria-expanded', 'true');
-                activeNavItem = item;
+                // 現在のメニューをトグル
+                if (isExpanded) {
+                    item.classList.remove('menu-active');
+                    link.setAttribute('aria-expanded', 'false');
+                } else {
+                    item.classList.add('menu-active');
+                    link.setAttribute('aria-expanded', 'true');
+                }
             });
             
-            item.addEventListener('mouseleave', (e) => {
-                const relatedTarget = e.relatedTarget;
-                if (relatedTarget && (menu.contains(relatedTarget) || item.contains(relatedTarget))) {
-                    return;
+            // キーボード操作
+            link.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    link.click();
                 }
                 
-                menuCloseTimeout = setTimeout(() => {
+                if (e.key === 'Escape') {
                     item.classList.remove('menu-active');
-                    if (link) link.setAttribute('aria-expanded', 'false');
-                    if (activeNavItem === item) activeNavItem = null;
-                }, 150);
-            });
-            
-            menu.addEventListener('mouseenter', () => {
-                clearTimeout(menuCloseTimeout);
-            });
-            
-            menu.addEventListener('mouseleave', (e) => {
-                const relatedTarget = e.relatedTarget;
-                if (relatedTarget && item.contains(relatedTarget)) {
-                    return;
+                    link.setAttribute('aria-expanded', 'false');
+                    link.focus();
                 }
-                
-                menuCloseTimeout = setTimeout(() => {
-                    item.classList.remove('menu-active');
-                    if (link) link.setAttribute('aria-expanded', 'false');
-                    if (activeNavItem === item) activeNavItem = null;
-                }, 100);
             });
-            
-            if (link) {
-                link.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        if (link.tagName === 'BUTTON') {
-                            e.preventDefault();
-                            const isExpanded = item.classList.contains('menu-active');
-                            
-                            navItems.forEach(otherItem => {
-                                otherItem.classList.remove('menu-active');
-                                const otherLink = otherItem.querySelector('.ji-nav-link');
-                                if (otherLink) otherLink.setAttribute('aria-expanded', 'false');
-                            });
-                            
-                            if (!isExpanded) {
-                                item.classList.add('menu-active');
-                                link.setAttribute('aria-expanded', 'true');
-                                const firstLink = menu.querySelector('a');
-                                if (firstLink) setTimeout(() => firstLink.focus(), 50);
-                            }
-                        }
-                    }
-                    
-                    if (e.key === 'Escape') {
-                        item.classList.remove('menu-active');
-                        link.setAttribute('aria-expanded', 'false');
-                        link.focus();
-                    }
-                });
-            }
         });
         
+        // 外部クリックで閉じる
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.ji-nav-item')) {
                 navItems.forEach(item => {
@@ -1741,6 +1651,7 @@ $header_data = ji_get_header_data();
         if (scrollY > 150) {
             if (scrollY > lastScrollY + 5) {
                 header?.classList.add('hidden');
+                // スクロール時にメニューを閉じる
                 navItems.forEach(item => {
                     item.classList.remove('menu-active');
                     const link = item.querySelector('.ji-nav-link');
@@ -1768,6 +1679,7 @@ $header_data = ji_get_header_data();
         isSearchOpen = !isSearchOpen;
         searchPanel?.classList.toggle('open', isSearchOpen);
         
+        // メガメニューを閉じる
         navItems.forEach(item => {
             item.classList.remove('menu-active');
             const link = item.querySelector('.ji-nav-link');
@@ -1820,6 +1732,7 @@ $header_data = ji_get_header_data();
                 const contentId = trigger.getAttribute('aria-controls');
                 const content = document.getElementById(contentId);
                 
+                // 他のアコーディオンを閉じる
                 document.querySelectorAll('.ji-mobile-accordion-trigger').forEach(t => {
                     if (t !== trigger) {
                         t.setAttribute('aria-expanded', 'false');
@@ -1889,6 +1802,7 @@ $header_data = ji_get_header_data();
         });
     }
     
+    // イベントリスナー
     window.addEventListener('scroll', requestTick, { passive: true });
     
     searchToggle?.addEventListener('click', toggleSearch);
@@ -1908,6 +1822,7 @@ $header_data = ji_get_header_data();
             }
         }
         
+        // Ctrl/Cmd + K で検索
         if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
             e.preventDefault();
             toggleSearch();
@@ -1926,6 +1841,7 @@ $header_data = ji_get_header_data();
         }
     });
     
+    // 初期化
     initMegaMenus();
     initAccordions();
     initSearchSuggestions();
@@ -1938,6 +1854,6 @@ $header_data = ji_get_header_data();
     
     handleScroll();
     
-    console.log('[✓] Joseikin Insight Header v9.1.0 - SEO Cleaned for Yoast');
+    console.log('[✓] Joseikin Insight Header v10.0.0 - Click Menu Edition');
 })();
 </script>
