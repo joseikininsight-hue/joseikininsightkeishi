@@ -638,6 +638,45 @@ $img_base = 'https://joseikin-insight.com/wp-content/uploads/2025/12/';
 <!-- ============================================
      AIコンシェルジュ ポップアップモーダル
      ============================================ -->
+<div class="diag-chat-popup" id="diagChatPopup" role="dialog" aria-labelledby="diagChatPopupTitle" aria-modal="true" aria-hidden="true">
+    <div class="diag-chat-popup__overlay" data-close-popup></div>
+    <div class="diag-chat-popup__container">
+        <header class="diag-chat-popup__header">
+            <div class="diag-chat-popup__profile">
+                <div class="diag-chat-popup__avatar">
+                    <img src="<?php echo esc_url($img_base); ?>7.png" alt="AIコンシェルジュ" width="40" height="40">
+                </div>
+                <div class="diag-chat-popup__info">
+                    <h3 id="diagChatPopupTitle" class="diag-chat-popup__name">補助金診断コンシェルジュ</h3>
+                    <p class="diag-chat-popup__status">
+                        <span class="diag-status-dot"></span>
+                        <span>オンライン</span>
+                    </p>
+                </div>
+            </div>
+            <button type="button" class="diag-chat-popup__close" id="closeDiagPopup" aria-label="閉じる">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </header>
+        <div class="diag-chat-popup__body" id="diagChatMessages">
+            <!-- チャットメッセージがここに動的に挿入されます -->
+        </div>
+        <div class="diag-chat-popup__footer" id="diagChatFooter">
+            <div class="diag-chat-popup__input-wrap">
+                <input type="text" class="diag-chat-popup__input" id="diagChatInput" placeholder="メッセージを入力..." disabled>
+                <button type="button" class="diag-chat-popup__send" id="diagChatSend" disabled aria-label="送信">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"/>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ============================================
      利用規約モーダル
@@ -4005,5 +4044,579 @@ html, body {
 <!-- ============================================
      SCRIPTS
      ============================================ -->
+<script>
+(function() {
+    'use strict';
+    
+    // ===========================================
+    // 診断チャットポップアップ システム
+    // ===========================================
+    
+    // DOM要素
+    const popup = document.getElementById('diagChatPopup');
+    const messagesContainer = document.getElementById('diagChatMessages');
+    const chatInput = document.getElementById('diagChatInput');
+    const chatSend = document.getElementById('diagChatSend');
+    const chatFooter = document.getElementById('diagChatFooter');
+    
+    // 状態管理
+    let currentStep = 0;
+    let userAnswers = {};
+    let isProcessing = false;
+    let conversationId = null;
+    
+    // 都道府県リスト
+    const prefectures = [
+        '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+        '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+        '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
+        '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
+        '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
+        '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
+        '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
+    ];
+    
+    // 質問フロー定義
+    const questions = [
+        {
+            id: 'business_type',
+            message: 'こんにちは！補助金診断コンシェルジュです。\n\nあなたの事業に合った補助金・助成金をお探しします。\n\nまず、事業形態を教えてください。',
+            type: 'options',
+            options: [
+                { value: 'corporation', label: '法人（株式会社・合同会社など）' },
+                { value: 'sole_proprietor', label: '個人事業主・フリーランス' },
+                { value: 'startup', label: '創業予定（これから起業）' },
+                { value: 'npo', label: 'NPO・社団法人・財団法人' }
+            ]
+        },
+        {
+            id: 'industry',
+            message: 'ありがとうございます。\n\n次に、主な業種を教えてください。',
+            type: 'options',
+            options: [
+                { value: 'manufacturing', label: '製造業' },
+                { value: 'retail', label: '小売業・卸売業' },
+                { value: 'service', label: 'サービス業' },
+                { value: 'it', label: 'IT・情報通信業' },
+                { value: 'construction', label: '建設業' },
+                { value: 'food', label: '飲食業' },
+                { value: 'medical', label: '医療・福祉' },
+                { value: 'other', label: 'その他' }
+            ]
+        },
+        {
+            id: 'employee_count',
+            message: '従業員数を教えてください。\n（役員・パート・アルバイト含む）',
+            type: 'options',
+            options: [
+                { value: '0', label: '0人（経営者のみ）' },
+                { value: '1-5', label: '1〜5人' },
+                { value: '6-20', label: '6〜20人' },
+                { value: '21-50', label: '21〜50人' },
+                { value: '51-100', label: '51〜100人' },
+                { value: '101+', label: '101人以上' }
+            ]
+        },
+        {
+            id: 'purpose',
+            message: '補助金・助成金を活用したい目的を教えてください。\n（最も近いものを選択）',
+            type: 'options',
+            options: [
+                { value: 'equipment', label: '設備投資・機械導入' },
+                { value: 'it', label: 'IT導入・DX推進' },
+                { value: 'hiring', label: '人材採用・雇用拡大' },
+                { value: 'training', label: '人材育成・研修' },
+                { value: 'rd', label: '研究開発・新商品開発' },
+                { value: 'expansion', label: '事業拡大・販路開拓' },
+                { value: 'startup', label: '創業・起業支援' },
+                { value: 'other', label: 'その他・わからない' }
+            ]
+        },
+        {
+            id: 'location',
+            message: '事業所の所在地（都道府県）を教えてください。',
+            type: 'select',
+            options: prefectures.map(p => ({ value: p, label: p }))
+        },
+        {
+            id: 'detail',
+            message: '最後に、事業内容や探している補助金について、詳しく教えてください。\n\n例：「製造業で新しい機械を導入したい」「ECサイトを立ち上げたい」など',
+            type: 'text',
+            placeholder: '事業内容や希望を自由にご記入ください...'
+        }
+    ];
+    
+    // ===========================================
+    // ポップアップ制御
+    // ===========================================
+    
+    function openPopup() {
+        popup.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        
+        // 初回表示時のみ初期化
+        if (currentStep === 0 && messagesContainer.children.length === 0) {
+            setTimeout(() => {
+                showQuestion(0);
+            }, 300);
+        }
+    }
+    
+    function closePopup() {
+        popup.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+    
+    // ポップアップトリガーのイベントリスナー
+    document.querySelectorAll('.diag-popup-trigger').forEach(btn => {
+        btn.addEventListener('click', openPopup);
+    });
+    
+    // 閉じるボタン
+    document.getElementById('closeDiagPopup')?.addEventListener('click', closePopup);
+    
+    // オーバーレイクリックで閉じる
+    popup?.querySelector('[data-close-popup]')?.addEventListener('click', closePopup);
+    
+    // ESCキーで閉じる
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && popup?.getAttribute('aria-hidden') === 'false') {
+            closePopup();
+        }
+    });
+    
+    // ===========================================
+    // メッセージ表示
+    // ===========================================
+    
+    function addMessage(content, type = 'bot', options = null) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `diag-popup-message diag-popup-message--${type}`;
+        
+        if (type === 'bot') {
+            let html = `<div class="diag-popup-bubble">${escapeHtml(content).replace(/\n/g, '<br>')}</div>`;
+            
+            if (options) {
+                html += renderOptions(options);
+            }
+            
+            messageDiv.innerHTML = html;
+        } else {
+            messageDiv.innerHTML = `<div class="diag-popup-bubble">${escapeHtml(content)}</div>`;
+        }
+        
+        messagesContainer.appendChild(messageDiv);
+        scrollToBottom();
+        
+        return messageDiv;
+    }
+    
+    function renderOptions(question) {
+        if (question.type === 'options') {
+            let html = '<div class="diag-popup-options">';
+            question.options.forEach(opt => {
+                html += `<button type="button" class="diag-popup-option" data-value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</button>`;
+            });
+            html += '</div>';
+            return html;
+        }
+        
+        if (question.type === 'select') {
+            let html = '<select class="diag-popup-select"><option value="">選択してください</option>';
+            question.options.forEach(opt => {
+                html += `<option value="${escapeHtml(opt.value)}">${escapeHtml(opt.label)}</option>`;
+            });
+            html += '</select>';
+            return html;
+        }
+        
+        if (question.type === 'text') {
+            enableTextInput(question.placeholder || 'メッセージを入力...');
+            return '<p class="diag-popup-hint">下の入力欄からメッセージを送信してください</p>';
+        }
+        
+        return '';
+    }
+    
+    function showTyping() {
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'diag-popup-typing';
+        typingDiv.id = 'diagTypingIndicator';
+        typingDiv.innerHTML = `
+            <span class="diag-popup-typing-dot"></span>
+            <span class="diag-popup-typing-dot"></span>
+            <span class="diag-popup-typing-dot"></span>
+        `;
+        messagesContainer.appendChild(typingDiv);
+        scrollToBottom();
+    }
+    
+    function hideTyping() {
+        document.getElementById('diagTypingIndicator')?.remove();
+    }
+    
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // ===========================================
+    // 質問フロー
+    // ===========================================
+    
+    function showQuestion(index) {
+        if (index >= questions.length) {
+            submitDiagnosis();
+            return;
+        }
+        
+        const question = questions[index];
+        currentStep = index;
+        
+        showTyping();
+        
+        setTimeout(() => {
+            hideTyping();
+            addMessage(question.message, 'bot', question);
+            
+            // イベントリスナー設定
+            setupOptionListeners();
+        }, 800);
+    }
+    
+    function setupOptionListeners() {
+        // オプションボタン
+        messagesContainer.querySelectorAll('.diag-popup-option:not([data-bound])').forEach(btn => {
+            btn.setAttribute('data-bound', 'true');
+            btn.addEventListener('click', function() {
+                if (isProcessing) return;
+                
+                const value = this.dataset.value;
+                const label = this.textContent;
+                
+                handleAnswer(value, label);
+            });
+        });
+        
+        // セレクトボックス
+        messagesContainer.querySelectorAll('.diag-popup-select:not([data-bound])').forEach(select => {
+            select.setAttribute('data-bound', 'true');
+            select.addEventListener('change', function() {
+                if (isProcessing || !this.value) return;
+                
+                handleAnswer(this.value, this.value);
+            });
+        });
+    }
+    
+    function handleAnswer(value, label) {
+        if (isProcessing) return;
+        isProcessing = true;
+        
+        const question = questions[currentStep];
+        userAnswers[question.id] = value;
+        
+        // ユーザーの回答を表示
+        addMessage(label, 'user');
+        
+        // オプションを無効化
+        disableCurrentOptions();
+        
+        // 次の質問へ
+        setTimeout(() => {
+            isProcessing = false;
+            showQuestion(currentStep + 1);
+        }, 500);
+    }
+    
+    function disableCurrentOptions() {
+        messagesContainer.querySelectorAll('.diag-popup-option:not(:disabled)').forEach(btn => {
+            btn.disabled = true;
+        });
+        messagesContainer.querySelectorAll('.diag-popup-select:not(:disabled)').forEach(select => {
+            select.disabled = true;
+        });
+    }
+    
+    // ===========================================
+    // テキスト入力
+    // ===========================================
+    
+    function enableTextInput(placeholder) {
+        chatInput.disabled = false;
+        chatInput.placeholder = placeholder;
+        chatSend.disabled = false;
+        chatInput.focus();
+    }
+    
+    function disableTextInput() {
+        chatInput.disabled = true;
+        chatInput.value = '';
+        chatSend.disabled = true;
+    }
+    
+    // 送信ボタン
+    chatSend?.addEventListener('click', sendTextMessage);
+    
+    // Enterキーで送信
+    chatInput?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendTextMessage();
+        }
+    });
+    
+    function sendTextMessage() {
+        const text = chatInput.value.trim();
+        if (!text || isProcessing) return;
+        
+        handleAnswer(text, text);
+        disableTextInput();
+    }
+    
+    // ===========================================
+    // 診断実行
+    // ===========================================
+    
+    async function submitDiagnosis() {
+        showTyping();
+        
+        // 診断中メッセージ
+        setTimeout(() => {
+            hideTyping();
+            addMessage('ありがとうございます。\n入力いただいた情報をもとに、最適な補助金・助成金を検索しています...\n\nしばらくお待ちください。', 'bot');
+            showTyping();
+        }, 500);
+        
+        try {
+            // REST API呼び出し
+            const response = await fetch('<?php echo esc_url(rest_url('gip/v1/chat')); ?>', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+                },
+                body: JSON.stringify({
+                    action: 'search',
+                    answers: userAnswers,
+                    conversation_id: conversationId
+                })
+            });
+            
+            const data = await response.json();
+            
+            hideTyping();
+            
+            if (data.success && data.results && data.results.length > 0) {
+                conversationId = data.conversation_id;
+                displayResults(data.results, data.summary);
+            } else {
+                displayNoResults();
+            }
+        } catch (error) {
+            console.error('診断エラー:', error);
+            hideTyping();
+            addMessage('申し訳ございません。診断中にエラーが発生しました。\n\nページを再読み込みして、もう一度お試しください。', 'bot');
+        }
+    }
+    
+    // ===========================================
+    // 結果表示
+    // ===========================================
+    
+    function displayResults(results, summary) {
+        // サマリーメッセージ
+        const summaryMsg = summary || `${results.length}件の補助金・助成金が見つかりました！\n\n以下、おすすめ順にご紹介します。`;
+        addMessage(summaryMsg, 'bot');
+        
+        // 結果カード表示
+        const resultsDiv = document.createElement('div');
+        resultsDiv.className = 'diag-popup-results';
+        
+        // サマリーパネル
+        resultsDiv.innerHTML = `
+            <div class="diag-results-summary">
+                <div class="diag-results-summary-header">
+                    <div class="diag-results-summary-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="diag-results-summary-title">診断完了</h4>
+                        <p class="diag-results-summary-count">${results.length}件の補助金・助成金が見つかりました</p>
+                    </div>
+                </div>
+            </div>
+            <h4 class="diag-results-section-title">おすすめの補助金・助成金</h4>
+        `;
+        
+        // 各結果カード
+        results.forEach((result, index) => {
+            const card = createResultCard(result, index + 1);
+            resultsDiv.appendChild(card);
+        });
+        
+        // 再調整パネル
+        resultsDiv.innerHTML += `
+            <div class="diag-readjust-panel">
+                <div class="diag-readjust-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+                        <path d="M16 21h5v-5"/>
+                    </svg>
+                    <span>結果が期待と異なる場合</span>
+                </div>
+                <div class="diag-readjust-options">
+                    <button type="button" class="diag-readjust-btn" data-action="restart">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="1 4 1 10 7 10"/>
+                            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                        </svg>
+                        最初からやり直す
+                    </button>
+                    <button type="button" class="diag-readjust-btn" data-action="detail">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                        条件を変えて再検索
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        messagesContainer.appendChild(resultsDiv);
+        scrollToBottom();
+        
+        // 再調整ボタンのイベント
+        resultsDiv.querySelectorAll('.diag-readjust-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const action = this.dataset.action;
+                if (action === 'restart') {
+                    restartDiagnosis();
+                } else if (action === 'detail') {
+                    enableTextInput('条件を追加で入力してください...');
+                    addMessage('追加の条件や、より詳しい情報があればお聞かせください。', 'bot');
+                }
+            });
+        });
+    }
+    
+    function createResultCard(result, rank) {
+        const card = document.createElement('div');
+        card.className = 'diag-popup-result-card';
+        if (rank <= 3) card.classList.add('diag-popup-result-card--highlight');
+        
+        const rankClass = rank <= 3 ? `diag-popup-result-rank--${rank}` : '';
+        
+        card.innerHTML = `
+            <div class="diag-popup-result-header">
+                <span class="diag-popup-result-rank ${rankClass}">${rank}</span>
+                <div class="diag-popup-result-header-info">
+                    <h5 class="diag-popup-result-title">${escapeHtml(result.title || result.name || '補助金名不明')}</h5>
+                    ${result.score ? `<span class="diag-popup-result-score">適合度 ${Math.round(result.score * 100)}%</span>` : ''}
+                </div>
+            </div>
+            <div class="diag-popup-result-meta">
+                ${result.amount ? `<span class="diag-popup-result-amount">💰 ${escapeHtml(result.amount)}</span>` : ''}
+                ${result.deadline ? `<span class="diag-popup-result-deadline">📅 ${escapeHtml(result.deadline)}</span>` : ''}
+                ${result.organization ? `<span>🏢 ${escapeHtml(result.organization)}</span>` : ''}
+            </div>
+            ${result.reason ? `<div class="diag-popup-result-reason">💡 ${escapeHtml(result.reason)}</div>` : ''}
+            <div class="diag-popup-result-actions">
+                ${result.url ? `<a href="${escapeHtml(result.url)}" target="_blank" rel="noopener" class="diag-popup-result-btn diag-popup-result-btn--primary">詳細を見る →</a>` : ''}
+                ${result.permalink ? `<a href="${escapeHtml(result.permalink)}" class="diag-popup-result-btn diag-popup-result-btn--secondary">サイト内で確認</a>` : ''}
+            </div>
+        `;
+        
+        return card;
+    }
+    
+    function displayNoResults() {
+        addMessage('申し訳ございません。\n\n入力いただいた条件に合致する補助金・助成金が見つかりませんでした。\n\n条件を変えて再度お試しいただくか、下記ボタンから最初からやり直してください。', 'bot');
+        
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'diag-popup-options';
+        actionsDiv.innerHTML = `
+            <button type="button" class="diag-popup-option" data-action="restart">最初からやり直す</button>
+            <button type="button" class="diag-popup-option" data-action="contact">専門家に相談する</button>
+        `;
+        
+        messagesContainer.appendChild(actionsDiv);
+        scrollToBottom();
+        
+        actionsDiv.querySelectorAll('.diag-popup-option').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const action = this.dataset.action;
+                if (action === 'restart') {
+                    restartDiagnosis();
+                } else if (action === 'contact') {
+                    window.location.href = '<?php echo esc_url(home_url('/contact/')); ?>';
+                }
+            });
+        });
+    }
+    
+    function restartDiagnosis() {
+        currentStep = 0;
+        userAnswers = {};
+        conversationId = null;
+        messagesContainer.innerHTML = '';
+        disableTextInput();
+        showQuestion(0);
+    }
+    
+    // ===========================================
+    // 利用規約モーダル
+    // ===========================================
+    
+    const termsModal = document.getElementById('termsModal');
+    const openTermsBtn = document.getElementById('openTermsModal');
+    const closeTermsBtn = document.getElementById('closeTermsModal');
+    
+    function openTermsModal() {
+        termsModal?.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeTermsModal() {
+        termsModal?.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+    
+    openTermsBtn?.addEventListener('click', openTermsModal);
+    closeTermsBtn?.addEventListener('click', closeTermsModal);
+    termsModal?.querySelector('[data-close-modal]')?.addEventListener('click', closeTermsModal);
+    termsModal?.querySelectorAll('[data-close-modal]').forEach(el => {
+        el.addEventListener('click', closeTermsModal);
+    });
+    
+    // ===========================================
+    // スムーススクロール
+    // ===========================================
+    
+    document.querySelectorAll('.smooth-scroll').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if (href.startsWith('#')) {
+                e.preventDefault();
+                const target = document.querySelector(href);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+    });
+    
+})();
+</script>
 
 <?php get_footer(); ?>
