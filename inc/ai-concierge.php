@@ -7923,13 +7923,11 @@ function gip_frontend_css() {
     border: 1px solid var(--gip-gray-300);
     border-radius: var(--gip-radius);
     font-family: inherit;
-    font-size: 16px; /* iOS自動ズーム防止 - 16px必須 */
+    font-size: 14px;
     line-height: 1.6;
     resize: vertical;
     min-height: 80px;
     box-sizing: border-box;
-    -webkit-appearance: none;
-    appearance: none;
 }
 
 .gip-feedback-comment-input:focus {
@@ -8103,8 +8101,6 @@ function gip_frontend_css() {
     
     .gip-modal .gip-results {
         max-height: 50vh;
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
     }
     
     .gip-modal .gip-result-card {
@@ -8433,10 +8429,6 @@ function gip_frontend_js() {
                     e.preventDefault();
                     if (!self.isLoading) {
                         var value = $(this).data('value') || $(this).text().trim();
-                        // 結果エリアを非表示にしてトークを見やすく
-                        if (self.$results && self.$results.is(':visible')) {
-                            self.$results.slideUp(300);
-                        }
                         self.sendMessage(value);
                     }
                 })
@@ -10198,19 +10190,6 @@ function gip_shortcode_chat_modal($atts = array()) {
         background: #fafafa;
     }
     
-    /* iOS自動ズーム防止 - モーダル内の全入力要素 */
-    #gip-chat-modal input,
-    #gip-chat-modal textarea,
-    #gip-chat-modal select,
-    .gip-modal input,
-    .gip-modal textarea,
-    .gip-modal select {
-        font-size: 16px !important;
-        -webkit-text-size-adjust: 100%;
-        -webkit-appearance: none;
-        appearance: none;
-    }
-    
     /* モバイル最適化 */
     @media (max-width: 768px) {
         .gip-modal-container {
@@ -10384,8 +10363,8 @@ function gip_shortcode_chat_modal($atts = array()) {
                             this.style.height = Math.min(this.scrollHeight, 120) + 'px';
                         });
                         
-                        // オプションボタン（モーダル内のみ - documentレベルで確実に捕捉）
-                        $(document).off('click.gipmodal-option').on('click.gipmodal-option', '#gip-chat-modal .gip-option-btn:not(.gip-continue-btn)', function(e) {
+                        // オプションボタン（モーダル内のみ）
+                        chat.$container.off('click.gipmodal', '.gip-option-btn').on('click.gipmodal', '.gip-option-btn:not(.gip-continue-btn)', function(e) {
                             e.preventDefault();
                             e.stopPropagation();
                             if (!chat.isLoading) {
@@ -10393,17 +10372,12 @@ function gip_shortcode_chat_modal($atts = array()) {
                             }
                         });
                         
-                        // 続行ボタン（documentレベルで確実に捕捉）
-                        $(document).off('click.gipmodal-continue').on('click.gipmodal-continue', '#gip-chat-modal .gip-continue-btn', function(e) {
+                        // 続行ボタン
+                        chat.$container.off('click.gipmodal', '.gip-continue-btn').on('click.gipmodal', '.gip-continue-btn', function(e) {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('GIP Modal: Continue button clicked', $(this).data('value'));
                             if (!chat.isLoading) {
                                 var value = $(this).data('value') || $(this).text().trim();
-                                // 結果エリアを非表示にしてトークを見やすく
-                                if (chat.$results && chat.$results.is(':visible')) {
-                                    chat.$results.slideUp(300);
-                                }
                                 chat.sendMessage(value);
                             }
                         });
