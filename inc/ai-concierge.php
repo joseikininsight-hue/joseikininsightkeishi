@@ -5772,17 +5772,6 @@ function gip_frontend_css() {
     --gip-font-serif: "Shippori Mincho", "Yu Mincho", serif;
 }
 
-/* iOSキーボードズーム防止 - グローバルルール（16px必須） */
-.gip-chat input[type="text"],
-.gip-chat input[type="email"],
-.gip-chat input[type="tel"],
-.gip-chat input[type="number"],
-.gip-chat textarea,
-.gip-chat select {
-    font-size: 16px !important;
-    -webkit-text-size-adjust: 100%;
-}
-
 /* Gemini風 - チャットコンテナ */
 .gip-chat {
     max-width: 100%;
@@ -6275,10 +6264,10 @@ function gip_frontend_css() {
 }
 
 .gip-result-sub-title {
-    font-size: 14px;
-    font-weight: 700;
-    margin: 0 0 6px 0;
-    line-height: 1.5;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+    line-height: 1.4;
     color: var(--gip-black);
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -6402,12 +6391,11 @@ function gip_frontend_css() {
 
 .gip-result-title {
     font-family: var(--gip-font-serif);
-    font-size: 18px;
-    font-weight: 700;
-    margin: 0 0 10px 0;
-    line-height: 1.5;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    line-height: 1.4;
     color: var(--gip-black);
-    letter-spacing: 0.01em;
 }
 
 .gip-result-org {
@@ -7105,9 +7093,8 @@ function gip_frontend_css() {
     }
     
     .gip-result-title {
-        font-size: 16px;
-        line-height: 1.5;
-        font-weight: 700;
+        font-size: 15px;
+        line-height: 1.4;
     }
     
     .gip-result-org {
@@ -7191,8 +7178,7 @@ function gip_frontend_css() {
     }
     
     .gip-result-sub-title {
-        font-size: 13px;
-        font-weight: 700;
+        font-size: 12px;
     }
     
     .gip-result-sub-meta {
@@ -7777,12 +7763,10 @@ function gip_frontend_css() {
 
 /* 結果サマリーパネル */
 .gip-results-summary {
-    position: relative;
     background: linear-gradient(135deg, var(--gip-accent) 0%, var(--gip-gray-800) 100%);
     color: var(--gip-white);
     border-radius: var(--gip-radius);
     padding: 20px;
-    padding-right: 50px; /* 閉じるボタン用のスペース */
     margin-bottom: 16px;
 }
 
@@ -7816,58 +7800,6 @@ function gip_frontend_css() {
 .gip-results-summary-count {
     font-size: 14px;
     opacity: 0.9;
-}
-
-/* 結果閉じるボタン */
-.gip-results-close-btn {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: #fff;
-    transition: all 0.2s ease;
-}
-
-.gip-results-close-btn:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-/* 結果再表示トグルボタン */
-.gip-results-toggle {
-    padding: 12px;
-    text-align: center;
-}
-
-.gip-results-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
-    background: var(--gip-gray-100);
-    border: 1px solid var(--gip-gray-300);
-    border-radius: var(--gip-radius);
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--gip-gray-700);
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.gip-results-toggle-btn:hover {
-    background: var(--gip-gray-200);
-    border-color: var(--gip-gray-400);
-}
-
-.gip-results-toggle-btn svg {
-    flex-shrink: 0;
 }
 
 .gip-results-summary-info {
@@ -8501,6 +8433,10 @@ function gip_frontend_js() {
                     e.preventDefault();
                     if (!self.isLoading) {
                         var value = $(this).data('value') || $(this).text().trim();
+                        // 結果エリアを非表示にしてトークを見やすく
+                        if (self.$results && self.$results.is(':visible')) {
+                            self.$results.slideUp(300);
+                        }
                         self.sendMessage(value);
                     }
                 })
@@ -8568,14 +8504,6 @@ function gip_frontend_js() {
                     var message = '「' + title + '」について詳しく教えてください。';
                     self.sendMessage(message);
                     $('html, body').animate({ scrollTop: self.$messages.offset().top - 100 }, 500);
-                })
-                .on('click.gip', '.gip-results-toggle-btn', function(e) {
-                    e.preventDefault();
-                    self.showResults();
-                })
-                .on('click.gip', '.gip-results-close-btn', function(e) {
-                    e.preventDefault();
-                    self.hideResults();
                 });
             
             // ESCキーでモーダルを閉じる
@@ -8769,9 +8697,6 @@ function gip_frontend_js() {
             // 送信時にキーボードを閉じる
             self.hideKeyboard();
             
-            // 結果エリアを非表示にしてトークを見やすく
-            self.hideResults();
-            
             self.addMessage('user', msg);
             self.removeOptions();
             
@@ -8791,9 +8716,6 @@ function gip_frontend_js() {
             // 選択時にキーボードを閉じる
             self.hideKeyboard();
             
-            // 結果エリアを非表示にしてトークを見やすく
-            self.hideResults();
-            
             self.addMessage('user', value);
             self.removeOptions();
             
@@ -8806,34 +8728,6 @@ function gip_frontend_js() {
         removeOptions: function() {
             var self = this;
             self.$messages.find('.gip-options, .gip-select-wrap, .gip-hint, .gip-input-inline').remove();
-        },
-        
-        // 結果エリアを非表示（続行ボタン押下時などに使用）
-        hideResults: function() {
-            var self = this;
-            // 結果が表示されている場合のみ非表示処理を実行
-            if (self.$results && self.$results.length && self.$results.is(':visible')) {
-                self.$results.slideUp(300, function() {
-                    // 非表示後、結果を再表示するボタンを追加
-                    if (!self.$container.find('.gip-results-toggle').length) {
-                        var toggleHtml = '<div class="gip-results-toggle">';
-                        toggleHtml += '<button type="button" class="gip-results-toggle-btn">';
-                        toggleHtml += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>';
-                        toggleHtml += '診断結果を再表示';
-                        toggleHtml += '</button></div>';
-                        self.$results.before(toggleHtml);
-                    }
-                });
-            }
-        },
-        
-        // 結果エリアを表示
-        showResults: function() {
-            var self = this;
-            if (self.$results && self.$results.length) {
-                self.$container.find('.gip-results-toggle').remove();
-                self.$results.slideDown(300);
-            }
         },
         
         callApi: function(data) {
@@ -9103,9 +8997,6 @@ function gip_frontend_js() {
             html += '<div class="gip-results-summary-title">診断完了</div>';
             html += '<div class="gip-results-summary-count">' + self.allResults.length + '件の補助金が見つかりました</div>';
             html += '</div>';
-            html += '<button type="button" class="gip-results-close-btn" title="結果を閉じる">';
-            html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-            html += '</button>';
             html += '</div>';
             html += '<div class="gip-results-summary-info">';
             // 合計金額（上位5件の最大補助額の合計概算）
@@ -9497,18 +9388,6 @@ function gip_frontend_js() {
             html += '</div></div>';
             
             self.$results.append(html);
-            
-            // 続行ボタンのイベントを確実にバインド
-            console.log('GIP Chat: showContinueOptions called, binding continue button events');
-            self.$results.find('.gip-continue-btn').off('click.gipcontinue-direct').on('click.gipcontinue-direct', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('GIP Chat: Direct continue button click', $(this).data('value'));
-                if (!self.isLoading) {
-                    var value = $(this).data('value') || $(this).text().trim();
-                    self.sendMessage(value);
-                }
-            });
         },
         
         sendFeedback: function(grantId, feedback) {
@@ -10521,6 +10400,10 @@ function gip_shortcode_chat_modal($atts = array()) {
                             console.log('GIP Modal: Continue button clicked', $(this).data('value'));
                             if (!chat.isLoading) {
                                 var value = $(this).data('value') || $(this).text().trim();
+                                // 結果エリアを非表示にしてトークを見やすく
+                                if (chat.$results && chat.$results.is(':visible')) {
+                                    chat.$results.slideUp(300);
+                                }
                                 chat.sendMessage(value);
                             }
                         });
@@ -10609,18 +10492,6 @@ function gip_shortcode_chat_modal($atts = array()) {
                             // 送信完了表示
                             $section.html('<div class="gip-feedback-success"><span class="gip-feedback-success-icon">✓</span><p>フィードバックをお送りいただきありがとうございます！</p></div>');
                         });
-                        
-                        // 結果再表示ボタン
-                        chat.$container.off('click.gipmodal', '.gip-results-toggle-btn').on('click.gipmodal', '.gip-results-toggle-btn', function(e) {
-                            e.preventDefault();
-                            chat.showResults();
-                        });
-                        
-                        // 結果閉じるボタン
-                        chat.$container.off('click.gipmodal', '.gip-results-close-btn').on('click.gipmodal', '.gip-results-close-btn', function(e) {
-                            e.preventDefault();
-                            chat.hideResults();
-                        });
                     },
                     
                     handleOptionClick: function($btn) {
@@ -10662,10 +10533,6 @@ function gip_shortcode_chat_modal($atts = array()) {
                         
                         chat.$input.val('').css('height', 'auto');
                         chat.hideKeyboard();
-                        
-                        // 結果エリアを非表示にしてトークを見やすく
-                        chat.hideResults();
-                        
                         chat.addMessage('user', msg);
                         chat.removeOptions();
                         
@@ -10681,10 +10548,6 @@ function gip_shortcode_chat_modal($atts = array()) {
                         if (chat.isLoading || !value) return;
                         
                         chat.hideKeyboard();
-                        
-                        // 結果エリアを非表示にしてトークを見やすく
-                        chat.hideResults();
-                        
                         chat.addMessage('user', value);
                         chat.removeOptions();
                         
@@ -10697,34 +10560,6 @@ function gip_shortcode_chat_modal($atts = array()) {
                     removeOptions: function() {
                         var chat = this;
                         chat.$messages.find('.gip-options, .gip-select-wrap, .gip-hint, .gip-input-inline').remove();
-                    },
-                    
-                    // 結果エリアを非表示（続行ボタン押下時などに使用）
-                    hideResults: function() {
-                        var chat = this;
-                        // 結果が表示されている場合のみ非表示処理を実行
-                        if (chat.$results && chat.$results.length && chat.$results.is(':visible')) {
-                            chat.$results.slideUp(300, function() {
-                                // 非表示後、結果を再表示するボタンを追加
-                                if (!chat.$container.find('.gip-results-toggle').length) {
-                                    var toggleHtml = '<div class="gip-results-toggle">';
-                                    toggleHtml += '<button type="button" class="gip-results-toggle-btn">';
-                                    toggleHtml += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>';
-                                    toggleHtml += '診断結果を再表示';
-                                    toggleHtml += '</button></div>';
-                                    chat.$results.before(toggleHtml);
-                                }
-                            });
-                        }
-                    },
-                    
-                    // 結果エリアを表示
-                    showResults: function() {
-                        var chat = this;
-                        if (chat.$results && chat.$results.length) {
-                            chat.$container.find('.gip-results-toggle').remove();
-                            chat.$results.slideDown(300);
-                        }
                     },
                     
                     callApi: function(data) {
@@ -10965,9 +10800,6 @@ function gip_shortcode_chat_modal($atts = array()) {
                         html += '<div class="gip-results-summary-title">診断完了</div>';
                         html += '<div class="gip-results-summary-count">' + chat.allResults.length + '件の補助金が見つかりました</div>';
                         html += '</div>';
-                        html += '<button type="button" class="gip-results-close-btn" title="結果を閉じる">';
-                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-                        html += '</button>';
                         html += '</div>';
                         html += '<div class="gip-results-summary-info">';
                         var totalAmount = 0;
@@ -11162,17 +10994,6 @@ function gip_shortcode_chat_modal($atts = array()) {
                                 chat.stepBack(99);
                             } else {
                                 chat.readjust(adjustType, '');
-                            }
-                        });
-                        
-                        // 続行ボタンのイベントバインド（動的に追加される要素用）
-                        chat.$results.off('click.gipcontinue').on('click.gipcontinue', '.gip-continue-btn', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('GIP Modal Results: Continue button clicked', $(this).data('value'));
-                            if (!chat.isLoading) {
-                                var value = $(this).data('value') || $(this).text().trim();
-                                chat.sendMessage(value);
                             }
                         });
                     },
@@ -11520,18 +11341,6 @@ function gip_shortcode_chat_modal($atts = array()) {
                         html += '</div></div>';
                         
                         chat.$results.append(html);
-                        
-                        // 続行ボタンのイベントを確実にバインド
-                        console.log('GIP Modal: showContinueOptions called, binding continue button events');
-                        chat.$results.find('.gip-continue-btn').off('click.gipcontinue-direct').on('click.gipcontinue-direct', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            console.log('GIP Modal: Direct continue button click', $(this).data('value'));
-                            if (!chat.isLoading) {
-                                var value = $(this).data('value') || $(this).text().trim();
-                                chat.sendMessage(value);
-                            }
-                        });
                     },
                     
                     sendFeedback: function(grantId, feedback) {
