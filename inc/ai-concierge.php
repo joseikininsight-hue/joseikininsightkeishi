@@ -1116,8 +1116,8 @@ function gip_page_question_logs() {
                                             break;
                                         }
                                         if ($title) {
-                                            echo '<div style="margin-bottom: 4px; padding: 2px 6px; background: #f3f4f6; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="' . esc_attr($title) . '">';
-                                            echo esc_html(mb_strimwidth($title, 0, 30, '...'));
+                                            echo '<div style="margin-bottom: 4px; padding: 4px 6px; background: #f3f4f6; border-radius: 4px; white-space: normal; line-height: 1.4;" title="' . esc_attr($title) . '">';
+                                            echo esc_html($title);
                                             echo '</div>';
                                             $count++;
                                         }
@@ -6544,12 +6544,16 @@ function gip_frontend_css() {
 }
 
 .gip-result-excerpt {
-    font-size: 13px;
-    color: var(--gip-gray-600);
+    font-size: 14px;
+    color: var(--gip-gray-700);
     line-height: 1.7;
-    margin-bottom: 16px;
+    margin: 12px 0 16px;
+    padding: 12px;
+    background: var(--gip-gray-50);
+    border-left: 3px solid var(--gip-gray-300);
+    border-radius: 4px;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -9410,8 +9414,12 @@ function gip_frontend_js() {
             html += '</label>';
             html += '<div class="gip-feedback-btns">';
             html += '<span class="gip-feedback-label">参考になった?</span>';
-            html += '<button type="button" class="gip-feedback-btn" data-feedback="positive">はい</button>';
-            html += '<button type="button" class="gip-feedback-btn" data-feedback="negative">いいえ</button>';
+            html += '<button type="button" class="gip-feedback-btn" data-feedback="positive">';
+            html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>';
+            html += 'はい</button>';
+            html += '<button type="button" class="gip-feedback-btn" data-feedback="negative">';
+            html += '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M10 15v4a3 3 0 0 0 3 3l4-9V2H5.72a2 2 0 0 0-2 1.7l-1.38 9a2 2 0 0 0 2 2.3zm7-13h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17"></path></svg>';
+            html += 'いいえ</button>';
             html += '</div></div>';
             
             html += '</div>';
@@ -11388,11 +11396,11 @@ function gip_shortcode_chat_modal($atts = array()) {
                         html += '<div class="gip-result-feedback">';
                         html += '<span class="gip-result-feedback-label">この結果は？</span>';
                         html += '<button type="button" class="gip-feedback-btn" data-feedback="positive" data-grant-id="' + r.grant_id + '">';
-                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
-                        html += '</button>';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="margin-right:4px;"><path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3zM7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"/></svg>';
+                        html += 'はい</button>';
                         html += '<button type="button" class="gip-feedback-btn" data-feedback="negative" data-grant-id="' + r.grant_id + '">';
-                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
-                        html += '</button>';
+                        html += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="margin-right:4px;"><path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3zm7-13h2.67A2.31 2.31 0 0122 4v7a2.31 2.31 0 01-2.33 2H17"/></svg>';
+                        html += 'いいえ</button>';
                         html += '</div>';
                         
                         html += '</div></div>';
