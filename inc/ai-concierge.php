@@ -8142,13 +8142,9 @@ function gip_frontend_css() {
     color: #059669;
 }
 
-/* PC向けポップアップサイズ拡大 */
+/* PC向けポップアップ調整 */
 @media (min-width: 769px) {
-    .gip-modal {
-        max-width: 680px;
-        width: 95%;
-        max-height: 88vh;
-    }
+    /* .gip-modal への max-width 指定を削除 - 全画面オーバーレイとして機能させる */
     
     .gip-modal .gip-chat-messages {
         min-height: 450px;
@@ -8166,17 +8162,12 @@ function gip_frontend_css() {
 
 /* タブレット向け */
 @media (min-width: 769px) and (max-width: 1024px) {
-    .gip-modal {
-        max-width: 600px;
-    }
+    /* .gip-modal への max-width 指定を削除 */
 }
 
 /* 大画面向け */
 @media (min-width: 1200px) {
-    .gip-modal {
-        max-width: 720px;
-        max-height: 85vh;
-    }
+    /* .gip-modal への max-width 指定を削除 */
     
     .gip-modal .gip-chat-messages {
         min-height: 500px;
@@ -9983,7 +9974,7 @@ function gip_shortcode_chat_modal($atts = array()) {
     <!-- AIコンシェルジュ ポップアップモーダル -->
     <div id="gip-chat-modal" class="gip-modal" role="dialog" aria-modal="true" aria-labelledby="gip-modal-title" aria-hidden="true">
         <div class="gip-modal-overlay" data-gip-modal-close></div>
-        <div class="gip-modal-container" style="width: 80% !important; max-width: 1200px !important; height: 80vh !important; min-width: 800px;">
+        <div class="gip-modal-container">
             <div class="gip-modal-header">
                 <div class="gip-modal-header-content">
                     <div class="gip-modal-avatar">
