@@ -7888,50 +7888,65 @@ function gip_frontend_css() {
 }
 
 .gip-results-fb-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 8px 14px;
+    gap: 6px;
+    padding: 10px 16px;
     background: var(--gip-white);
-    border: 1px solid var(--gip-gray-300);
-    border-radius: 20px;
-    font-size: 13px;
-    color: var(--gip-gray-600);
+    border: 2px solid var(--gip-gray-300);
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--gip-gray-700);
     cursor: pointer;
     transition: var(--gip-transition);
 }
 
 .gip-results-fb-btn:hover {
     background: var(--gip-gray-100);
+    transform: translateY(-1px);
+}
+
+.gip-results-fb-btn.positive {
+    border-color: #86efac;
+    color: #166534;
 }
 
 .gip-results-fb-btn.positive:hover {
-    background: #d1fae5;
-    border-color: #10b981;
-    color: #059669;
+    background: #dcfce7;
+    border-color: #22c55e;
+    color: #166534;
+}
+
+.gip-results-fb-btn.negative {
+    border-color: #fca5a5;
+    color: #991b1b;
 }
 
 .gip-results-fb-btn.negative:hover {
     background: #fee2e2;
     border-color: #ef4444;
-    color: #dc2626;
+    color: #991b1b;
 }
 
 .gip-results-fb-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 /* フィードバック選択済みスタイル */
 .gip-results-fb-btn.selected.positive {
-    background: #d1fae5;
-    border-color: #10b981;
-    color: #059669;
+    background: #dcfce7;
+    border-color: #22c55e;
+    color: #166534;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
 }
 
 .gip-results-fb-btn.selected.negative {
     background: #fee2e2;
     border-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
     color: #dc2626;
 }
 
@@ -10128,10 +10143,10 @@ function gip_shortcode_chat_modal($atts = array()) {
     
     .gip-modal-container {
         position: relative;
-        width: 80%;
-        max-width: 1200px;
-        height: 80vh;
-        max-height: 80vh;
+        width: 80% !important;
+        max-width: 1200px !important;
+        height: 80vh !important;
+        max-height: 80vh !important;
         background: #ffffff;
         border-radius: 16px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
