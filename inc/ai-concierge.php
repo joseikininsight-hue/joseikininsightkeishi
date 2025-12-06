@@ -1094,13 +1094,13 @@ function gip_page_question_logs() {
                                     <?php echo esc_html($category_labels[$log->detected_category] ?? $log->detected_category ?? '-'); ?>
                                 </span>
                             </td>
-                            <td>
-                                <strong><?php echo esc_html(mb_strimwidth($log->purpose ?? '', 0, 40, '...')); ?></strong>
+                            <td style="max-width: 300px; word-wrap: break-word;">
+                                <strong><?php echo esc_html($log->purpose ?? ''); ?></strong>
                                 <?php if ($log->clarification): ?>
-                                <br><small style="color: #6b7280;"><?php echo esc_html(mb_strimwidth($log->clarification, 0, 60, '...')); ?></small>
+                                <br><small style="color: #6b7280;"><?php echo esc_html($log->clarification); ?></small>
                                 <?php endif; ?>
                                 <?php if ($log->raw_input): ?>
-                                <br><small style="color: #9ca3af;"><?php echo esc_html(mb_strimwidth($log->raw_input, 0, 80, '...')); ?></small>
+                                <br><small style="color: #9ca3af;"><?php echo esc_html($log->raw_input); ?></small>
                                 <?php endif; ?>
                             </td>
                             <td style="font-size: 12px;"><?php echo esc_html(($log->prefecture ?? '') . ($log->municipality ? ' ' . $log->municipality : '')); ?></td>
