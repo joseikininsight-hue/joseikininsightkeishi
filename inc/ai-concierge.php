@@ -9983,7 +9983,7 @@ function gip_shortcode_chat_modal($atts = array()) {
     <!-- AIコンシェルジュ ポップアップモーダル -->
     <div id="gip-chat-modal" class="gip-modal" role="dialog" aria-modal="true" aria-labelledby="gip-modal-title" aria-hidden="true">
         <div class="gip-modal-overlay" data-gip-modal-close></div>
-        <div class="gip-modal-container">
+        <div class="gip-modal-container" style="width: 80% !important; max-width: 1200px !important; height: 80vh !important; min-width: 800px;">
             <div class="gip-modal-header">
                 <div class="gip-modal-header-content">
                     <div class="gip-modal-avatar">
