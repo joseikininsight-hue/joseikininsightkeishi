@@ -10141,12 +10141,15 @@ function gip_shortcode_chat_modal($atts = array()) {
         -webkit-backdrop-filter: blur(4px);
     }
     
-    .gip-modal-container {
+    .gip-modal-container,
+    #gip-chat-modal .gip-modal-container,
+    #gip-chat-modal > .gip-modal-container {
         position: relative;
         width: 80% !important;
         max-width: 1200px !important;
         height: 80vh !important;
         max-height: 80vh !important;
+        min-width: 800px;
         background: #ffffff;
         border-radius: 16px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -10275,20 +10278,24 @@ function gip_shortcode_chat_modal($atts = array()) {
     
     /* タブレット最適化 */
     @media (min-width: 769px) and (max-width: 1024px) {
-        .gip-modal-container {
-            width: 85%;
-            max-width: 800px;
-            height: 80vh;
+        .gip-modal-container,
+        #gip-chat-modal .gip-modal-container {
+            width: 90% !important;
+            max-width: 900px !important;
+            min-width: 0 !important;
+            height: 85vh !important;
         }
     }
     
     /* モバイル最適化 */
     @media (max-width: 768px) {
-        .gip-modal-container {
-            width: 100%;
-            height: 100%;
-            max-width: 100%;
-            max-height: 100%;
+        .gip-modal-container,
+        #gip-chat-modal .gip-modal-container {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: 100% !important;
+            max-height: 100% !important;
+            min-width: 0 !important;
             border-radius: 0;
         }
         
