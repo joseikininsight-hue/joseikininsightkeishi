@@ -10128,9 +10128,10 @@ function gip_shortcode_chat_modal($atts = array()) {
     
     .gip-modal-container {
         position: relative;
-        width: 95%;
-        max-width: 500px;
-        max-height: 90vh;
+        width: 80%;
+        max-width: 1200px;
+        height: 80vh;
+        max-height: 80vh;
         background: #ffffff;
         border-radius: 16px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -10244,7 +10245,7 @@ function gip_shortcode_chat_modal($atts = array()) {
     
     .gip-modal-body .gip-chat-messages {
         flex: 1;
-        max-height: 50vh;
+        max-height: none;
         min-height: 300px;
         overflow-y: auto;
         padding: 20px;
@@ -10255,6 +10256,15 @@ function gip_shortcode_chat_modal($atts = array()) {
         padding: 16px 20px;
         border-top: 1px solid #e5e5e5;
         background: #fafafa;
+    }
+    
+    /* タブレット最適化 */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .gip-modal-container {
+            width: 85%;
+            max-width: 800px;
+            height: 80vh;
+        }
     }
     
     /* モバイル最適化 */
