@@ -11,9 +11,10 @@ if (!defined('ABSPATH')) {
     exit('Direct access forbidden.');
 }
 
+// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
+
 // ==========================================================================
 // データ取得（パフォーマンス最適化）
-// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
 // ==========================================================================
 
 $cache_key = 'search_section_data_v53';
@@ -734,20 +735,4 @@ function search_get_svg_icon($name) {
     
 </section>
 
-<style>
-/* ==========================================================================
-   Search Section v53.0 - Complete Styles
-   ========================================================================== */
 
-.search {
-    --s-black: #111111;
-    --s-white: #ffffff;
-    --s-gray-900: #1a1a1a;
-    --s-gray-800: #2a2a2a;
-    --s-gray-700: #404040;
-    --s-gray-600: #555555;
-    --s-gray-500: #666666;
-    --s-gray-400: #888888;
-    --s-gray-300: #aaaaaa;
-    // ==========================================================================
-    // 都道府県 → 市区町村連動（メインフォーム）

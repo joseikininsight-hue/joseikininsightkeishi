@@ -18,7 +18,6 @@ if (!defined('ABSPATH')) exit;
 
 // ==========================================================================
 // データ取得（パフォーマンス最適化）
-// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
 // ==========================================================================
 
 $today = date('Y-m-d');
@@ -601,5 +600,5 @@ if ($columns_new->have_posts()) {
 
     </div>
 </section>
-</style>
+
 
