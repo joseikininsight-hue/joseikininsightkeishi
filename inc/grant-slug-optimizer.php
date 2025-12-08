@@ -326,44 +326,77 @@ function gi_get_grants_needing_slug_conversion($limit = -1) {
     
     $prefix = GI_SLUG_PREFIX;
     
-    // IDベースのスラッグでない投稿を取得
-    $query = $wpdb->prepare(
-        "SELECT ID, post_name, post_title 
+    // シンプルなLIKE検索で除外（REGEXPより軽い）
+    // grant- で始まり、その後が数字のみのものを除外
+    $query = "SELECT ID, post_name, post_title 
          FROM {$wpdb->posts} 
          WHERE post_type = 'grant' 
          AND post_status = 'publish'
-         AND post_name NOT REGEXP %s
-         ORDER BY ID ASC",
-        "^{$prefix}[0-9]+$"
-    );
+         AND post_name NOT LIKE 'grant-%%'
+         ORDER BY ID ASC";
     
     if ($limit > 0) {
         $query .= $wpdb->prepare(" LIMIT %d", $limit);
     }
     
-    return $wpdb->get_results($query);
+    $results = $wpdb->get_results($query);
+    
+    // PHPで追加フィルタリング（grant-XXXだが数字以外を含むものは対象）
+    $filtered = array();
+    foreach ($results as $post) {
+        // grant-{数字のみ} の形式でなければ変換対象
+        if (!preg_match('/^grant-\d+$/', $post->post_name)) {
+            $filtered[] = $post;
+        }
+        if ($limit > 0 && count($filtered) >= $limit) {
+            break;
+        }
+    }
+    
+    return $filtered;
 }
 
 /**
- * 変換が必要な投稿数を取得
+ * 変換が必要な投稿数を取得（キャッシュ付き）
  * 
  * @return int 件数
  */
 function gi_count_grants_needing_conversion() {
+    // トランジェントキャッシュを使用（5分間）
+    $cache_key = 'gi_grants_need_conversion_count';
+    $cached = get_transient($cache_key);
+    
+    if ($cached !== false) {
+        return (int) $cached;
+    }
+    
     global $wpdb;
     
-    $prefix = GI_SLUG_PREFIX;
-    
-    return (int) $wpdb->get_var(
-        $wpdb->prepare(
-            "SELECT COUNT(*) 
-             FROM {$wpdb->posts} 
-             WHERE post_type = 'grant' 
-             AND post_status = 'publish'
-             AND post_name NOT REGEXP %s",
-            "^{$prefix}[0-9]+$"
-        )
+    // まず全件取得してPHPでカウント（REGEXP避け）
+    $all_grants = $wpdb->get_results(
+        "SELECT post_name FROM {$wpdb->posts} 
+         WHERE post_type = 'grant' 
+         AND post_status = 'publish'"
     );
+    
+    $count = 0;
+    foreach ($all_grants as $grant) {
+        if (!preg_match('/^grant-\d+$/', $grant->post_name)) {
+            $count++;
+        }
+    }
+    
+    // キャッシュに保存（5分）
+    set_transient($cache_key, $count, 5 * MINUTE_IN_SECONDS);
+    
+    return $count;
+}
+
+/**
+ * キャッシュをクリア
+ */
+function gi_clear_conversion_cache() {
+    delete_transient('gi_grants_need_conversion_count');
 }
 
 /**
@@ -373,51 +406,77 @@ function gi_count_grants_needing_conversion() {
  * @return array 結果
  */
 function gi_convert_single_grant_slug($post_id) {
-    $post = get_post($post_id);
-    
-    if (!$post || $post->post_type !== 'grant') {
-        return array(
-            'success' => false,
-            'message' => '投稿が見つかりません'
+    try {
+        $post = get_post($post_id);
+        
+        if (!$post || $post->post_type !== 'grant') {
+            return array(
+                'success' => false,
+                'message' => '投稿が見つかりません (ID: ' . $post_id . ')'
+            );
+        }
+        
+        $old_slug = $post->post_name;
+        $new_slug = GI_SLUG_PREFIX . $post_id;
+        
+        // 既にIDベースのスラッグの場合
+        if (preg_match('/^grant-\d+$/', $old_slug)) {
+            return array(
+                'success' => true,
+                'message' => '既にIDベースのスラッグです',
+                'skipped' => true
+            );
+        }
+        
+        // フックを一時的に無効化（無限ループ防止）
+        remove_action('save_post', 'gi_auto_set_id_based_slug', 20);
+        remove_action('transition_post_status', 'gi_set_slug_on_publish', 10);
+        
+        // 直接DBを更新（wp_update_postより軽量）
+        global $wpdb;
+        $updated = $wpdb->update(
+            $wpdb->posts,
+            array('post_name' => $new_slug),
+            array('ID' => $post_id),
+            array('%s'),
+            array('%d')
         );
-    }
-    
-    $old_slug = $post->post_name;
-    $new_slug = GI_SLUG_PREFIX . $post_id;
-    
-    // 既にIDベースのスラッグの場合
-    if ($old_slug === $new_slug) {
+        
+        // フックを再有効化
+        add_action('save_post', 'gi_auto_set_id_based_slug', 20, 3);
+        add_action('transition_post_status', 'gi_set_slug_on_publish', 10, 3);
+        
+        if ($updated === false) {
+            return array(
+                'success' => false,
+                'message' => 'DB更新エラー: ' . $wpdb->last_error
+            );
+        }
+        
+        // キャッシュをクリア
+        clean_post_cache($post_id);
+        
+        // リダイレクトマップに追加
+        gi_add_slug_redirect($old_slug, $new_slug, $post_id);
+        
+        // カウントキャッシュをクリア
+        gi_clear_conversion_cache();
+        
         return array(
             'success' => true,
-            'message' => '既にIDベースのスラッグです',
-            'skipped' => true
+            'post_id' => $post_id,
+            'old_slug' => $old_slug,
+            'new_slug' => $new_slug,
+            'old_url' => home_url('/grants/' . $old_slug . '/'),
+            'new_url' => home_url('/grants/' . $new_slug . '/')
         );
-    }
-    
-    // スラッグを更新
-    $result = wp_update_post(array(
-        'ID' => $post_id,
-        'post_name' => $new_slug
-    ));
-    
-    if (is_wp_error($result)) {
+        
+    } catch (Exception $e) {
         return array(
             'success' => false,
-            'message' => $result->get_error_message()
+            'message' => '例外エラー: ' . $e->getMessage()
         );
     }
-    
-    // リダイレクトマップに追加
-    gi_add_slug_redirect($old_slug, $new_slug, $post_id);
-    
-    return array(
-        'success' => true,
-        'post_id' => $post_id,
-        'old_slug' => $old_slug,
-        'new_slug' => $new_slug,
-        'old_url' => home_url('/grants/' . $old_slug . '/'),
-        'new_url' => home_url('/grants/' . $new_slug . '/')
-    );
 }
 
 /**
@@ -426,8 +485,9 @@ function gi_convert_single_grant_slug($post_id) {
  * @param int $batch_size 1回あたりの処理件数
  * @return array 結果
  */
-function gi_bulk_convert_grant_slugs($batch_size = 50) {
-    $grants = gi_get_grants_needing_slug_conversion($batch_size);
+function gi_bulk_convert_grant_slugs($batch_size = 20) {
+    // メモリ制限を緩和
+    @ini_set('memory_limit', '512M');
     
     $results = array(
         'processed' => 0,
@@ -435,37 +495,77 @@ function gi_bulk_convert_grant_slugs($batch_size = 50) {
         'failed' => 0,
         'skipped' => 0,
         'details' => array(),
-        'remaining' => 0
+        'remaining' => 0,
+        'error' => null
     );
     
-    foreach ($grants as $grant) {
-        $result = gi_convert_single_grant_slug($grant->ID);
-        $results['processed']++;
+    try {
+        // キャッシュをクリア
+        gi_clear_conversion_cache();
         
-        if ($result['success']) {
-            if (isset($result['skipped']) && $result['skipped']) {
-                $results['skipped']++;
-            } else {
-                $results['success']++;
-                $results['details'][] = array(
-                    'post_id' => $grant->ID,
-                    'title' => $grant->post_title,
-                    'old_slug' => $result['old_slug'] ?? $grant->post_name,
-                    'new_slug' => $result['new_slug'] ?? GI_SLUG_PREFIX . $grant->ID
-                );
-            }
-        } else {
-            $results['failed']++;
-            $results['details'][] = array(
-                'post_id' => $grant->ID,
-                'title' => $grant->post_title,
-                'error' => $result['message']
-            );
+        $grants = gi_get_grants_needing_slug_conversion($batch_size);
+        
+        if (empty($grants)) {
+            $results['remaining'] = 0;
+            return $results;
         }
+        
+        foreach ($grants as $grant) {
+            // メモリ使用量をチェック
+            $memory_usage = memory_get_usage(true);
+            $memory_limit = ini_get('memory_limit');
+            $memory_limit_bytes = wp_convert_hr_to_bytes($memory_limit);
+            
+            // メモリが80%以上使用されていたら中断
+            if ($memory_usage > $memory_limit_bytes * 0.8) {
+                $results['error'] = 'メモリ制限に近づいたため中断しました';
+                break;
+            }
+            
+            $result = gi_convert_single_grant_slug($grant->ID);
+            $results['processed']++;
+            
+            if ($result['success']) {
+                if (isset($result['skipped']) && $result['skipped']) {
+                    $results['skipped']++;
+                } else {
+                    $results['success']++;
+                    // 詳細は最大10件まで
+                    if (count($results['details']) < 10) {
+                        $results['details'][] = array(
+                            'post_id' => $grant->ID,
+                            'title' => mb_substr($grant->post_title, 0, 30),
+                            'old_slug' => mb_substr($result['old_slug'] ?? $grant->post_name, 0, 30),
+                            'new_slug' => $result['new_slug'] ?? GI_SLUG_PREFIX . $grant->ID
+                        );
+                    }
+                }
+            } else {
+                $results['failed']++;
+                if (count($results['details']) < 10) {
+                    $results['details'][] = array(
+                        'post_id' => $grant->ID,
+                        'title' => mb_substr($grant->post_title, 0, 30),
+                        'error' => $result['message']
+                    );
+                }
+            }
+            
+            // 1件ごとにメモリ解放
+            wp_cache_flush();
+        }
+        
+        // 残り件数を計算（キャッシュなしで）
+        gi_clear_conversion_cache();
+        $results['remaining'] = gi_count_grants_needing_conversion();
+        
+    } catch (Exception $e) {
+        $results['error'] = '例外: ' . $e->getMessage();
+        error_log('[Slug Optimizer] Batch error: ' . $e->getMessage());
+    } catch (Error $e) {
+        $results['error'] = 'PHPエラー: ' . $e->getMessage();
+        error_log('[Slug Optimizer] PHP error: ' . $e->getMessage());
     }
-    
-    // 残り件数を計算
-    $results['remaining'] = gi_count_grants_needing_conversion();
     
     return $results;
 }
@@ -784,8 +884,8 @@ function gi_slug_optimizer_admin_page() {
             skipped: 0,
             failed: 0,
             retryCount: 0,
-            maxRetries: 3,
-            batchSize: 20,
+            maxRetries: 5,
+            batchSize: 10, // 10件ずつ処理（サーバー負荷軽減）
             startTime: null,
             nonce: $('#gi_bulk_convert_nonce').val()
         };
@@ -1047,37 +1147,68 @@ function gi_slug_optimizer_admin_page() {
  * AJAX: 一括変換処理
  */
 function gi_ajax_bulk_convert_slugs() {
-    // タイムアウトを延長
-    @set_time_limit(120);
-    @ini_set('max_execution_time', 120);
+    // エラーハンドリングを設定
+    $error_handler = function($errno, $errstr, $errfile, $errline) {
+        throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+    };
+    set_error_handler($error_handler, E_ERROR | E_WARNING);
     
-    // セキュリティチェック - nonceを検証
-    $nonce = isset($_POST['_wpnonce']) ? sanitize_text_field($_POST['_wpnonce']) : '';
-    
-    if (!wp_verify_nonce($nonce, 'gi_bulk_convert_nonce')) {
+    try {
+        // タイムアウトを延長
+        @set_time_limit(300);
+        @ini_set('max_execution_time', 300);
+        @ini_set('memory_limit', '512M');
+        
+        // セキュリティチェック - nonceを検証
+        $nonce = isset($_POST['_wpnonce']) ? sanitize_text_field($_POST['_wpnonce']) : '';
+        
+        if (!wp_verify_nonce($nonce, 'gi_bulk_convert_nonce')) {
+            restore_error_handler();
+            wp_send_json_error(array(
+                'message' => 'セキュリティトークンが無効です。ページをリロードしてください。',
+                'code' => 'invalid_nonce'
+            ));
+            return;
+        }
+        
+        if (!current_user_can('manage_options')) {
+            restore_error_handler();
+            wp_send_json_error(array(
+                'message' => '権限がありません',
+                'code' => 'no_permission'
+            ));
+            return;
+        }
+        
+        // バッチサイズを取得（デフォルト10件 - より安全に）
+        $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 10;
+        $batch_size = min(max($batch_size, 5), 30); // 5〜30件の範囲
+        
+        // バッチ処理を実行
+        $results = gi_bulk_convert_grant_slugs($batch_size);
+        
+        restore_error_handler();
+        wp_send_json_success($results);
+        
+    } catch (Exception $e) {
+        restore_error_handler();
+        error_log('[Slug Optimizer AJAX] Exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
         wp_send_json_error(array(
-            'message' => 'セキュリティトークンが無効です。ページをリロードしてください。',
-            'code' => 'invalid_nonce'
+            'message' => 'サーバーエラー: ' . $e->getMessage(),
+            'code' => 'exception',
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine()
         ));
-        return;
-    }
-    
-    if (!current_user_can('manage_options')) {
+    } catch (Error $e) {
+        restore_error_handler();
+        error_log('[Slug Optimizer AJAX] PHP Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
         wp_send_json_error(array(
-            'message' => '権限がありません',
-            'code' => 'no_permission'
+            'message' => 'PHPエラー: ' . $e->getMessage(),
+            'code' => 'php_error',
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine()
         ));
-        return;
     }
-    
-    // バッチサイズを取得（デフォルト20件）
-    $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 20;
-    $batch_size = min(max($batch_size, 5), 50); // 5〜50件の範囲
-    
-    // バッチ処理を実行
-    $results = gi_bulk_convert_grant_slugs($batch_size);
-    
-    wp_send_json_success($results);
 }
 add_action('wp_ajax_gi_bulk_convert_slugs', 'gi_ajax_bulk_convert_slugs');
 
