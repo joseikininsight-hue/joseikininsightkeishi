@@ -555,11 +555,53 @@ function gi_slug_optimizer_admin_page() {
                 <strong><?php echo number_format($needs_conversion); ?> 件</strong>の投稿のスラッグを変換する必要があります。
             </p>
             
-            <div id="conversion-progress" style="display: none; margin: 20px 0;">
-                <div class="progress-bar" style="width: 100%; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
-                    <div id="progress-fill" style="width: 0%; height: 24px; background: #0073aa; transition: width 0.3s;"></div>
+            <!-- 進捗状況パネル -->
+            <div id="conversion-status-panel" style="display: none; margin: 20px 0; padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px;">
+                <h3 style="margin-top: 0;">📊 変換進捗状況</h3>
+                
+                <!-- プログレスバー -->
+                <div style="margin: 15px 0;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <span id="progress-label">処理中...</span>
+                        <span id="progress-percent">0%</span>
+                    </div>
+                    <div style="width: 100%; background: #e0e0e0; border-radius: 4px; overflow: hidden; height: 24px;">
+                        <div id="progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #0073aa, #00a0d2); transition: width 0.3s;"></div>
+                    </div>
                 </div>
-                <p id="progress-text" style="margin-top: 10px;"></p>
+                
+                <!-- 詳細統計 -->
+                <div id="progress-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 15px 0;">
+                    <div style="text-align: center; padding: 10px; background: #fff; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #0073aa;" id="stat-processed">0</div>
+                        <div style="font-size: 12px; color: #666;">処理済み</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: #fff; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #28a745;" id="stat-success">0</div>
+                        <div style="font-size: 12px; color: #666;">成功</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: #fff; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #ffc107;" id="stat-skipped">0</div>
+                        <div style="font-size: 12px; color: #666;">スキップ</div>
+                    </div>
+                    <div style="text-align: center; padding: 10px; background: #fff; border-radius: 4px;">
+                        <div style="font-size: 24px; font-weight: bold; color: #dc3545;" id="stat-failed">0</div>
+                        <div style="font-size: 12px; color: #666;">失敗</div>
+                    </div>
+                </div>
+                
+                <!-- ログ出力 -->
+                <div style="margin-top: 15px;">
+                    <details open>
+                        <summary style="cursor: pointer; font-weight: bold;">📝 処理ログ</summary>
+                        <div id="conversion-log" style="max-height: 200px; overflow-y: auto; background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; margin-top: 10px;">
+                            <div class="log-entry">[待機中] 変換開始を待っています...</div>
+                        </div>
+                    </details>
+                </div>
+                
+                <!-- 残り時間推定 -->
+                <div id="time-estimate" style="margin-top: 10px; font-size: 12px; color: #666;"></div>
             </div>
             
             <div id="conversion-result" style="display: none; margin: 20px 0;"></div>
@@ -569,14 +611,17 @@ function gi_slug_optimizer_admin_page() {
                 <button type="button" id="start-conversion" class="button button-primary button-large">
                     🚀 一括変換を開始
                 </button>
+                <button type="button" id="stop-conversion" class="button button-secondary" style="display: none; margin-left: 10px;">
+                    ⏹️ 停止
+                </button>
                 <span class="spinner" id="conversion-spinner" style="float: none; margin-left: 10px;"></span>
             </p>
             
-            <div class="notice notice-warning" style="margin-top: 15px;">
+            <div class="notice notice-info" style="margin-top: 15px;">
                 <p>
-                    <strong>⚠️ 注意:</strong> 
-                    変換を実行する前に、データベースのバックアップを取ることを強くお勧めします。<br>
-                    変換処理は1回に50件ずつ処理されます。
+                    <strong>💡 ヒント:</strong> 
+                    処理は20件ずつバッチ処理されます。エラーが発生しても自動リトライします。<br>
+                    ページを閉じても処理状態は保存されます。再度このページを開くと続きから再開できます。
                 </p>
             </div>
         </div>
@@ -727,83 +772,272 @@ function gi_slug_optimizer_admin_page() {
     
     <script>
     jQuery(document).ready(function($) {
-        var isConverting = false;
-        var totalToConvert = <?php echo $needs_conversion; ?>;
-        var converted = 0;
-        var bulkConvertNonce = $('#gi_bulk_convert_nonce').val();
+        // ============================================
+        // 状態管理
+        // ============================================
+        var state = {
+            isConverting: false,
+            isStopped: false,
+            totalToConvert: <?php echo $needs_conversion; ?>,
+            processed: 0,
+            success: 0,
+            skipped: 0,
+            failed: 0,
+            retryCount: 0,
+            maxRetries: 3,
+            batchSize: 20,
+            startTime: null,
+            nonce: $('#gi_bulk_convert_nonce').val()
+        };
         
-        console.log('[Slug Optimizer] Nonce loaded:', bulkConvertNonce ? 'yes' : 'no');
+        // ローカルストレージから状態を復元
+        var savedState = localStorage.getItem('gi_slug_conversion_state');
+        if (savedState) {
+            try {
+                var parsed = JSON.parse(savedState);
+                if (parsed.totalToConvert === state.totalToConvert) {
+                    // 同じジョブの続き
+                    addLog('info', '前回の処理状態を復元しました');
+                }
+            } catch(e) {}
+        }
         
-        $('#start-conversion').on('click', function() {
-            if (isConverting) return;
+        console.log('[Slug Optimizer] Initialized. Total:', state.totalToConvert);
+        
+        // ============================================
+        // ログ機能
+        // ============================================
+        function addLog(type, message) {
+            var $log = $('#conversion-log');
+            var timestamp = new Date().toLocaleTimeString();
+            var colors = {
+                'info': '#58a6ff',
+                'success': '#3fb950',
+                'warning': '#d29922',
+                'error': '#f85149'
+            };
+            var color = colors[type] || '#d4d4d4';
             
-            if (!confirm('一括変換を開始しますか？\n\nこの処理は中断できません。処理中はページを閉じないでください。')) {
+            $log.append('<div class="log-entry" style="color: ' + color + '">[' + timestamp + '] ' + message + '</div>');
+            $log.scrollTop($log[0].scrollHeight);
+        }
+        
+        // ============================================
+        // UI更新
+        // ============================================
+        function updateUI() {
+            var progress = state.totalToConvert > 0 ? Math.min(100, (state.processed / state.totalToConvert) * 100) : 0;
+            
+            $('#progress-fill').css('width', progress + '%');
+            $('#progress-percent').text(progress.toFixed(1) + '%');
+            $('#progress-label').text('処理中... ' + state.processed + ' / ' + state.totalToConvert + ' 件');
+            
+            $('#stat-processed').text(state.processed);
+            $('#stat-success').text(state.success);
+            $('#stat-skipped').text(state.skipped);
+            $('#stat-failed').text(state.failed);
+            
+            // 残り時間推定
+            if (state.startTime && state.processed > 0) {
+                var elapsed = (Date.now() - state.startTime) / 1000;
+                var rate = state.processed / elapsed;
+                var remaining = state.totalToConvert - state.processed;
+                var eta = remaining / rate;
+                
+                if (eta > 60) {
+                    $('#time-estimate').text('推定残り時間: 約 ' + Math.ceil(eta / 60) + ' 分');
+                } else {
+                    $('#time-estimate').text('推定残り時間: 約 ' + Math.ceil(eta) + ' 秒');
+                }
+            }
+            
+            // 状態を保存
+            localStorage.setItem('gi_slug_conversion_state', JSON.stringify(state));
+        }
+        
+        // ============================================
+        // バッチ処理
+        // ============================================
+        function runBatch() {
+            if (state.isStopped) {
+                addLog('warning', '処理が停止されました');
+                finishConversion(false, '処理が停止されました。続きは「一括変換を開始」で再開できます。');
                 return;
             }
             
-            isConverting = true;
-            converted = 0;
+            addLog('info', 'バッチ処理開始 (リトライ: ' + state.retryCount + '/' + state.maxRetries + ')');
             
-            $(this).prop('disabled', true);
-            $('#conversion-spinner').addClass('is-active');
-            $('#conversion-progress').show();
-            $('#conversion-result').hide();
-            
-            runBatch();
-        });
-        
-        function runBatch() {
-            console.log('[Slug Optimizer] Running batch with nonce:', bulkConvertNonce);
-            $.post(ajaxurl, {
-                action: 'gi_bulk_convert_slugs',
-                _wpnonce: bulkConvertNonce
-            })
-            .done(function(response) {
-                if (response.success) {
-                    converted += response.data.processed;
-                    var progress = Math.min(100, (converted / totalToConvert) * 100);
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'gi_bulk_convert_slugs',
+                    _wpnonce: state.nonce,
+                    batch_size: state.batchSize
+                },
+                timeout: 60000, // 60秒タイムアウト
+                success: function(response) {
+                    state.retryCount = 0; // 成功したらリトライカウントをリセット
                     
-                    $('#progress-fill').css('width', progress + '%');
-                    $('#progress-text').html(
-                        '<strong>' + converted + '</strong> / ' + totalToConvert + ' 件処理完了 ' +
-                        '(成功: ' + response.data.success + ', スキップ: ' + response.data.skipped + ', 失敗: ' + response.data.failed + ')'
-                    );
-                    
-                    if (response.data.remaining > 0) {
-                        // 次のバッチを実行
-                        setTimeout(runBatch, 500);
+                    if (response.success) {
+                        var data = response.data;
+                        
+                        state.processed += data.processed;
+                        state.success += data.success;
+                        state.skipped += data.skipped;
+                        state.failed += data.failed;
+                        
+                        addLog('success', '処理完了: ' + data.processed + '件 (成功: ' + data.success + ', スキップ: ' + data.skipped + ', 失敗: ' + data.failed + ')');
+                        
+                        // 詳細ログ
+                        if (data.details && data.details.length > 0) {
+                            data.details.forEach(function(d) {
+                                if (d.error) {
+                                    addLog('error', 'ID ' + d.post_id + ': ' + d.error);
+                                } else {
+                                    addLog('info', 'ID ' + d.post_id + ': ' + d.old_slug + ' → ' + d.new_slug);
+                                }
+                            });
+                        }
+                        
+                        updateUI();
+                        
+                        if (data.remaining > 0) {
+                            addLog('info', '残り ' + data.remaining + ' 件。次のバッチを開始...');
+                            setTimeout(runBatch, 300);
+                        } else {
+                            finishConversion(true, '全ての変換が完了しました！ (成功: ' + state.success + ', スキップ: ' + state.skipped + ', 失敗: ' + state.failed + ')');
+                        }
                     } else {
-                        // 完了
-                        finishConversion(true, '全ての変換が完了しました！');
+                        handleError(response.data ? response.data.message : '不明なエラー');
                     }
-                } else {
-                    finishConversion(false, response.data.message || 'エラーが発生しました');
+                },
+                error: function(xhr, status, error) {
+                    var errorMsg = 'AJAX エラー: ' + status;
+                    if (error) errorMsg += ' - ' + error;
+                    if (xhr.status) errorMsg += ' (HTTP ' + xhr.status + ')';
+                    
+                    handleError(errorMsg);
                 }
-            })
-            .fail(function() {
-                finishConversion(false, '通信エラーが発生しました');
             });
         }
         
-        function finishConversion(success, message) {
-            isConverting = false;
-            $('#start-conversion').prop('disabled', false);
-            $('#conversion-spinner').removeClass('is-active');
+        // ============================================
+        // エラーハンドリング
+        // ============================================
+        function handleError(errorMsg) {
+            addLog('error', errorMsg);
             
-            var className = success ? 'notice-success' : 'notice-error';
-            var icon = success ? '✅' : '❌';
+            state.retryCount++;
             
-            $('#conversion-result')
-                .html('<div class="notice ' + className + '"><p>' + icon + ' ' + message + '</p></div>')
-                .show();
-            
-            if (success) {
-                // ページをリロードして最新状態を表示
+            if (state.retryCount <= state.maxRetries) {
+                var waitTime = state.retryCount * 2000; // リトライごとに待機時間を増やす
+                addLog('warning', state.retryCount + '回目のリトライを ' + (waitTime/1000) + '秒後に実行...');
+                
                 setTimeout(function() {
-                    location.reload();
-                }, 2000);
+                    // nonceを再取得（セッション切れ対策）
+                    refreshNonceAndRetry();
+                }, waitTime);
+            } else {
+                finishConversion(false, 'エラーが発生しました。処理済み: ' + state.processed + '件。ページをリロードして続きを実行してください。');
             }
         }
+        
+        // ============================================
+        // Nonce再取得
+        // ============================================
+        function refreshNonceAndRetry() {
+            addLog('info', 'セキュリティトークンを再取得中...');
+            
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'gi_refresh_slug_nonce'
+                },
+                success: function(response) {
+                    if (response.success && response.data.nonce) {
+                        state.nonce = response.data.nonce;
+                        addLog('success', 'トークン再取得成功。処理を再開します。');
+                        runBatch();
+                    } else {
+                        addLog('error', 'トークン再取得失敗。ページをリロードしてください。');
+                        finishConversion(false, 'セキュリティトークンの再取得に失敗しました。ページをリロードしてください。');
+                    }
+                },
+                error: function() {
+                    addLog('error', 'トークン再取得通信エラー');
+                    runBatch(); // 古いnonceで再試行
+                }
+            });
+        }
+        
+        // ============================================
+        // 完了処理
+        // ============================================
+        function finishConversion(success, message) {
+            state.isConverting = false;
+            state.isStopped = false;
+            
+            $('#start-conversion').prop('disabled', false).show();
+            $('#stop-conversion').hide();
+            $('#conversion-spinner').removeClass('is-active');
+            
+            if (success) {
+                addLog('success', '=== 変換完了 ===');
+                localStorage.removeItem('gi_slug_conversion_state');
+                
+                $('#conversion-result')
+                    .html('<div class="notice notice-success"><p>✅ ' + message + '</p></div>')
+                    .show();
+                
+                setTimeout(function() {
+                    location.reload();
+                }, 3000);
+            } else {
+                addLog('warning', '=== 処理中断 ===');
+                
+                $('#conversion-result')
+                    .html('<div class="notice notice-warning"><p>⚠️ ' + message + '</p></div>')
+                    .show();
+            }
+        }
+        
+        // ============================================
+        // イベントハンドラ
+        // ============================================
+        $('#start-conversion').on('click', function() {
+            if (state.isConverting) return;
+            
+            if (!confirm('一括変換を開始しますか？\n\n処理中は他のタブで作業できます。')) {
+                return;
+            }
+            
+            state.isConverting = true;
+            state.isStopped = false;
+            state.startTime = Date.now();
+            state.retryCount = 0;
+            
+            $(this).prop('disabled', true);
+            $('#stop-conversion').show();
+            $('#conversion-spinner').addClass('is-active');
+            $('#conversion-status-panel').show();
+            $('#conversion-result').hide();
+            $('#conversion-log').html('');
+            
+            addLog('info', '=== 一括変換を開始 ===');
+            addLog('info', '対象: ' + state.totalToConvert + ' 件');
+            
+            updateUI();
+            runBatch();
+        });
+        
+        $('#stop-conversion').on('click', function() {
+            if (confirm('処理を停止しますか？\n\n停止後、再度「一括変換を開始」で続きから再開できます。')) {
+                state.isStopped = true;
+                addLog('warning', '停止リクエストを受信...');
+            }
+        });
     });
     </script>
     <?php
@@ -813,37 +1047,54 @@ function gi_slug_optimizer_admin_page() {
  * AJAX: 一括変換処理
  */
 function gi_ajax_bulk_convert_slugs() {
+    // タイムアウトを延長
+    @set_time_limit(120);
+    @ini_set('max_execution_time', 120);
+    
     // セキュリティチェック - nonceを検証
     $nonce = isset($_POST['_wpnonce']) ? sanitize_text_field($_POST['_wpnonce']) : '';
     
-    // デバッグ用ログ
-    if (defined('WP_DEBUG') && WP_DEBUG) {
-        error_log('[Slug Optimizer] AJAX called. Nonce: ' . $nonce);
-        error_log('[Slug Optimizer] Nonce verify result: ' . (wp_verify_nonce($nonce, 'gi_bulk_convert_nonce') ? 'valid' : 'invalid'));
-    }
-    
     if (!wp_verify_nonce($nonce, 'gi_bulk_convert_nonce')) {
         wp_send_json_error(array(
-            'message' => 'セキュリティチェックに失敗しました',
-            'debug' => array(
-                'nonce_received' => !empty($nonce),
-                'nonce_action' => 'gi_bulk_convert_nonce'
-            )
+            'message' => 'セキュリティトークンが無効です。ページをリロードしてください。',
+            'code' => 'invalid_nonce'
         ));
         return;
     }
     
     if (!current_user_can('manage_options')) {
-        wp_send_json_error(array('message' => '権限がありません'));
+        wp_send_json_error(array(
+            'message' => '権限がありません',
+            'code' => 'no_permission'
+        ));
         return;
     }
     
+    // バッチサイズを取得（デフォルト20件）
+    $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 20;
+    $batch_size = min(max($batch_size, 5), 50); // 5〜50件の範囲
+    
     // バッチ処理を実行
-    $results = gi_bulk_convert_grant_slugs(50);
+    $results = gi_bulk_convert_grant_slugs($batch_size);
     
     wp_send_json_success($results);
 }
 add_action('wp_ajax_gi_bulk_convert_slugs', 'gi_ajax_bulk_convert_slugs');
+
+/**
+ * AJAX: Nonce再取得
+ */
+function gi_ajax_refresh_slug_nonce() {
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error(array('message' => '権限がありません'));
+        return;
+    }
+    
+    wp_send_json_success(array(
+        'nonce' => wp_create_nonce('gi_bulk_convert_nonce')
+    ));
+}
+add_action('wp_ajax_gi_refresh_slug_nonce', 'gi_ajax_refresh_slug_nonce');
 
 /**
  * =============================================================================
