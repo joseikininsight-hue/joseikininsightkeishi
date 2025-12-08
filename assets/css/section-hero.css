@@ -522,3 +522,12 @@
         color: black;
     }
 }
+
+/* 強制表示 */
+.hero,
+.hero__container,
+.hero__content {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}

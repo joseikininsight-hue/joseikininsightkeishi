@@ -836,3 +836,12 @@ figure {
 @media (prefers-color-scheme: dark) {
     /* 必要に応じてダークモード対応を追加 */
 }
+
+/* 強制表示 */
+.ultimate-section,
+.tabs-container,
+.tab-content {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}

@@ -1010,3 +1010,12 @@
         display: none;
     }
 }
+
+/* 強制表示 */
+.search,
+.search__container,
+.search__form {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}

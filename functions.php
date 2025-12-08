@@ -480,9 +480,24 @@ function gi_enqueue_external_assets() {
     $template_dir = get_template_directory();
     $template_uri = get_template_directory_uri();
     
-    // Debug: Add inline style to verify CSS loading
+    // Critical CSS for front page visibility
     if (is_front_page() || is_home()) {
-        wp_add_inline_style('wp-block-library', '/* Front page external CSS loading active */');
+        $critical_css = '
+        /* Critical Front Page Styles */
+        body { background: #ffffff !important; }
+        .site-main { display: block !important; visibility: visible !important; opacity: 1 !important; }
+        .front-page-section { display: block !important; visibility: visible !important; opacity: 1 !important; }
+        #hero-section, #column-section, #grant-zone-section, #grant-news-section { 
+            display: block !important; 
+            visibility: visible !important; 
+            opacity: 1 !important;
+            min-height: 100px !important;
+        }
+        .hero { display: flex !important; visibility: visible !important; opacity: 1 !important; }
+        .search { display: block !important; visibility: visible !important; opacity: 1 !important; }
+        .ultimate-section { display: block !important; visibility: visible !important; opacity: 1 !important; }
+        ';
+        wp_add_inline_style('wp-block-library', $critical_css);
     }
     
     // Front Page (フロントページ)
@@ -619,7 +634,7 @@ function gi_enqueue_external_assets() {
         }
     }
 }
-add_action('wp_enqueue_scripts', 'gi_enqueue_external_assets', 5);
+add_action('wp_enqueue_scripts', 'gi_enqueue_external_assets', 1);
 
 /**
  * ============================================================================
