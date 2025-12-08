@@ -433,18 +433,10 @@ if (count($faq_items) < 3) {
 </script>
 <?php endif; ?>
 
-<?php
-// Enqueue single-column external CSS
-wp_enqueue_style(
-    'gic-single-column',
-    get_template_directory_uri() . '/assets/css/single-column.css',
-    array(),
-    filemtime(get_template_directory() . '/assets/css/single-column.css')
-);
+<?php 
+// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
+wp_head(); 
 ?>
-
-
-<?php wp_head(); ?>
 </head>
 <body <?php body_class('gic-page'); ?>>
 <?php wp_body_open(); ?>
@@ -938,17 +930,6 @@ wp_enqueue_style(
 </div>
 
 <div class="gic-toast" id="gicToast"></div>
-
-<?php
-// Enqueue single-column external JS
-wp_enqueue_script(
-    'gic-single-column',
-    get_template_directory_uri() . '/assets/js/single-column.js',
-    array(),
-    filemtime(get_template_directory() . '/assets/js/single-column.js'),
-    true
-);
-?>
 
 <?php endwhile; ?>
 

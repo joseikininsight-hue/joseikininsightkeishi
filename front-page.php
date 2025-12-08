@@ -121,11 +121,7 @@ $schema_breadcrumb = array(
     )
 );
 
-// フロントページ専用CSSを読み込み
-wp_enqueue_style('front-page-style', get_template_directory_uri() . '/assets/css/front-page.css', array(), '11.0.0');
-
-// フロントページ専用JSを読み込み
-wp_enqueue_script('front-page-script', get_template_directory_uri() . '/assets/js/front-page.js', array(), '12.0.0', true);
+// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
 ?>
 
 <a href="#main-content" class="skip-to-content" aria-label="メインコンテンツへスキップ">
