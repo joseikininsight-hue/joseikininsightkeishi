@@ -523,11 +523,21 @@
     }
 }
 
-/* 強制表示 */
-.hero,
-.hero__container,
-.hero__content {
+/* 強制表示 - Gridレイアウトを維持 */
+.hero {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.hero__container {
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+.hero__content {
+    display: grid !important;
     visibility: visible !important;
     opacity: 1 !important;
 }

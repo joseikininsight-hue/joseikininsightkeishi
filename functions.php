@@ -637,6 +637,108 @@ function gi_enqueue_external_assets() {
 add_action('wp_enqueue_scripts', 'gi_enqueue_external_assets', 1);
 
 /**
+ * Dequeue unused CSS on front-end
+ * フロントエンドで不要なCSSを除去
+ */
+function gi_dequeue_unused_assets() {
+    // ログインしていないユーザーには dashicons, admin-bar を読み込まない
+    if (!is_user_logged_in()) {
+        wp_dequeue_style('dashicons');
+        wp_dequeue_style('admin-bar');
+    }
+    
+    // block-library の未使用スタイルを削除（Gutenbergを使っていない場合）
+    if (is_front_page() || is_home()) {
+        // フロントページでは wp-block-library のスタイルは部分的に必要なので残す
+        // 代わりに、使用していない Jetpack などのスタイルを削除
+        wp_dequeue_style('jetpack-carousel');
+        wp_dequeue_style('tiled-gallery');
+    }
+}
+add_action('wp_enqueue_scripts', 'gi_dequeue_unused_assets', 100);
+
+/**
+ * Add defer attribute to non-critical JavaScript
+ * 重要でないJavaScriptにdefer属性を追加
+ */
+function gi_add_defer_attribute($tag, $handle) {
+    // jQuery は defer しない（多くのスクリプトが依存しているため）
+    if ('jquery' === $handle || 'jquery-core' === $handle || 'jquery-migrate' === $handle) {
+        return $tag;
+    }
+    
+    // Our custom scripts に defer を追加
+    $defer_scripts = array(
+        'gi-front-page-js',
+        'gi-section-hero-js',
+        'gi-section-search-js',
+        'gi-grant-tabs-js',
+        'gi-single-column-js',
+        'gi-single-grant-js'
+    );
+    
+    if (in_array($handle, $defer_scripts)) {
+        return str_replace(' src', ' defer src', $tag);
+    }
+    
+    return $tag;
+}
+add_filter('script_loader_tag', 'gi_add_defer_attribute', 10, 2);
+
+/**
+ * Add preload for critical CSS
+ * クリティカルCSSのプリロード
+ */
+function gi_add_css_preload() {
+    if (is_front_page() || is_home()) {
+        $template_uri = get_template_directory_uri();
+        $template_dir = get_template_directory();
+        
+        // Preload front-page CSS
+        if (file_exists($template_dir . '/assets/css/front-page.css')) {
+            echo '<link rel="preload" as="style" href="' . esc_url($template_uri . '/assets/css/front-page.css?ver=' . filemtime($template_dir . '/assets/css/front-page.css')) . '" />' . "\n";
+        }
+        
+        // Preload section-hero CSS
+        if (file_exists($template_dir . '/assets/css/section-hero.css')) {
+            echo '<link rel="preload" as="style" href="' . esc_url($template_uri . '/assets/css/section-hero.css?ver=' . filemtime($template_dir . '/assets/css/section-hero.css')) . '" />' . "\n";
+        }
+    }
+}
+add_action('wp_head', 'gi_add_css_preload', 1);
+
+/**
+ * Optimize images - add loading="lazy" except for hero image
+ * 画像の最適化 - ヒーロー画像以外に loading="lazy" を追加
+ */
+function gi_add_lazy_loading($attr, $attachment) {
+    // LCP画像（ヒーロー画像）には loading="lazy" を付けない
+    if (isset($attr['class']) && strpos($attr['class'], 'hero__image') !== false) {
+        $attr['loading'] = 'eager';
+        $attr['fetchpriority'] = 'high';
+    } else {
+        $attr['loading'] = 'lazy';
+    }
+    return $attr;
+}
+add_filter('wp_get_attachment_image_attributes', 'gi_add_lazy_loading', 10, 2);
+
+/**
+ * Remove query strings from static resources
+ * 静的リソースからクエリ文字列を削除（キャッシュ改善）
+ */
+function gi_remove_query_strings($src) {
+    // filemtime() バージョンは保持（キャッシュバスティングに必要）
+    // ただし、外部リソース（CDN等）のクエリ文字列は削除
+    if (strpos($src, get_site_url()) !== false || strpos($src, 'ver=') === false) {
+        return $src;
+    }
+    return remove_query_arg('ver', $src);
+}
+add_filter('style_loader_src', 'gi_remove_query_strings', 10, 1);
+add_filter('script_loader_src', 'gi_remove_query_strings', 10, 1);
+
+/**
  * ============================================================================
  * ADDITIONAL INCLUDE FILES
  * ============================================================================
