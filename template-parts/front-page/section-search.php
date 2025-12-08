@@ -11,8 +11,6 @@ if (!defined('ABSPATH')) {
     exit('Direct access forbidden.');
 }
 
-// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
-
 // ==========================================================================
 // データ取得（パフォーマンス最適化）
 // ==========================================================================
@@ -734,5 +732,4 @@ function search_get_svg_icon($name) {
     <?php endif; ?>
     
 </section>
-
 

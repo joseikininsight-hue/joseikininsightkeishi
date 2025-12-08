@@ -13,7 +13,6 @@ if (!defined('ABSPATH')) {
 
 // ==========================================================================
 // 設定値
-// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
 // ==========================================================================
 $hero_config = [
     // テキスト
@@ -210,20 +209,3 @@ if ($total_grants > 0) {
     
 </section>
 
-<style>
-/* ==========================================================================
-   Hero Section - Design System v51.0
-   ========================================================================== */
-
-.hero {
-    --hero-color-black: #111111;
-    --hero-color-white: #ffffff;
-    --hero-color-gray-900: #1a1a1a;
-    --hero-color-gray-700: #404040;
-    --hero-color-gray-500: #666666;
-    --hero-color-gray-300: #999999;
-    --hero-color-gray-100: #e5e5e5;
-    --hero-color-gray-50: #f8f9fa;
-    
-        
-        if (heroImage.complete) {

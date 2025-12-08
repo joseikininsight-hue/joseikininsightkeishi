@@ -601,4 +601,3 @@ if ($columns_new->have_posts()) {
     </div>
 </section>
 
-
