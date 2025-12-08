@@ -562,19 +562,19 @@ ul, ol {
 }
 
 .gi-checklist-title {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    font-size: 15px !important;
-    font-weight: bold !important;
-    color: var(--gi-black) !important;
-    margin: 0 !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--gi-black);
+    margin: 0;
 }
 
 .gi-checklist-title svg {
-    width: 18px !important;
-    height: 18px !important;
-    color: var(--gi-black) !important;
+    width: 18px;
+    height: 18px;
+    color: var(--gi-black);
 }
 
 .gi-checklist-actions {
@@ -635,14 +635,14 @@ ul, ol {
 }
 
 .gi-checklist-category-header {
-    display: flex !important;
-    align-items: center !important;
-    padding: 10px 18px !important;
-    background: var(--gi-gray-100) !important;
-    font-size: 13px !important;
-    font-weight: bold !important;
-    color: var(--gi-gray-900) !important;
-    border-bottom: 1px solid var(--gi-gray-400) !important;
+    display: flex;
+    align-items: center;
+    padding: 10px 18px;
+    background: var(--gi-gray-100);
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--gi-gray-900);
+    border-bottom: 1px solid var(--gi-gray-400);
 }
 
 .gi-checklist-items {
@@ -967,12 +967,12 @@ ul, ol {
 }
 
 .gi-compare-current {
-    background: var(--gi-primary-light) !important;
+    background: var(--gi-primary-light);
 }
 
 .gi-compare-current-header {
-    background: var(--gi-primary) !important;
-    color: var(--gi-white) !important;
+    background: var(--gi-primary);
+    color: var(--gi-white);
 }
 
 .gi-compare-grant-header {
@@ -2105,7 +2105,7 @@ ul, ol {
     .gi-related,
     .gi-ad-section,
     .gi-ai-section {
-        display: none !important;
+        display: none;
     }
     
     .gi-layout {
@@ -2113,14 +2113,14 @@ ul, ol {
     }
     
     .gi-page {
-        background: white !important;
+        background: white;
     }
 }
 
 /* === アクセシビリティ === */
 @media (prefers-reduced-motion: reduce) {
     * {
-        transition-duration: 0.01ms !important;
+        transition-duration: 0.01ms;
     }
 }
 
@@ -2152,4 +2152,62 @@ ul, ol {
 
 .gi-skip-link:focus {
     top: 0;
+}
+
+/* === チェックリスト追加スタイル（競合回避） === */
+.gi-grant-page .gi-checklist {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    position: relative;
+    z-index: 1;
+}
+
+.gi-grant-page .gi-checklist-header {
+    display: flex;
+    visibility: visible;
+}
+
+.gi-grant-page .gi-checklist-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    color: var(--gi-black);
+    margin: 0;
+}
+
+.gi-grant-page .gi-checklist-title svg {
+    width: 18px;
+    height: 18px;
+    color: var(--gi-black);
+    display: inline-block;
+}
+
+.gi-grant-page .gi-checklist-category-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 18px;
+    background: var(--gi-gray-100);
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--gi-gray-900);
+    border-bottom: 1px solid var(--gi-gray-400);
+}
+
+.gi-grant-page .gi-checklist-item {
+    display: flex;
+    visibility: visible;
+    opacity: 1;
+}
+
+.gi-grant-page .gi-checklist-checkbox {
+    display: flex;
+    visibility: visible;
+}
+
+.gi-grant-page .gi-checklist-label {
+    display: block;
+    visibility: visible;
 }

@@ -988,8 +988,8 @@
     .search *,
     .search *::before,
     .search *::after {
-        animation-duration: 0.01ms !important;
-        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms;
+        transition-duration: 0.01ms;
     }
 }
 
@@ -1007,6 +1007,6 @@
     .search__cta,
     .search__trust-bar,
     .search__municipality-interface {
-        display: none !important;
+        display: none;
     }
 }

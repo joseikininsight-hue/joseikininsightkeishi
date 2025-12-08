@@ -480,21 +480,61 @@ function gi_enqueue_external_assets() {
     $template_dir = get_template_directory();
     $template_uri = get_template_directory_uri();
     
+    // Debug: Add inline style to verify CSS loading
+    if (is_front_page() || is_home()) {
+        wp_add_inline_style('wp-block-library', '/* Front page external CSS loading active */');
+    }
+    
     // Front Page (フロントページ)
     if (is_front_page() || is_home()) {
-        // Front page main styles and scripts
+        // Front page main styles and scripts (base styles)
         if (file_exists($template_dir . '/assets/css/front-page.css')) {
             wp_enqueue_style(
                 'gi-front-page',
                 $template_uri . '/assets/css/front-page.css',
-                array(),
-                filemtime($template_dir . '/assets/css/front-page.css')
+                array('wp-block-library'), // Depend on WordPress core styles
+                filemtime($template_dir . '/assets/css/front-page.css'),
+                'all'
             );
         }
         
+        // Hero section (depends on front-page base styles)
+        if (file_exists($template_dir . '/assets/css/section-hero.css')) {
+            wp_enqueue_style(
+                'gi-section-hero',
+                $template_uri . '/assets/css/section-hero.css',
+                array('gi-front-page'),
+                filemtime($template_dir . '/assets/css/section-hero.css'),
+                'all'
+            );
+        }
+        
+        // Search section (depends on front-page base styles)
+        if (file_exists($template_dir . '/assets/css/section-search.css')) {
+            wp_enqueue_style(
+                'gi-section-search',
+                $template_uri . '/assets/css/section-search.css',
+                array('gi-front-page'),
+                filemtime($template_dir . '/assets/css/section-search.css'),
+                'all'
+            );
+        }
+        
+        // Grant tabs section (depends on front-page base styles)
+        if (file_exists($template_dir . '/assets/css/grant-tabs.css')) {
+            wp_enqueue_style(
+                'gi-grant-tabs',
+                $template_uri . '/assets/css/grant-tabs.css',
+                array('gi-front-page'),
+                filemtime($template_dir . '/assets/css/grant-tabs.css'),
+                'all'
+            );
+        }
+        
+        // JavaScript files
         if (file_exists($template_dir . '/assets/js/front-page.js')) {
             wp_enqueue_script(
-                'gi-front-page',
+                'gi-front-page-js',
                 $template_uri . '/assets/js/front-page.js',
                 array('jquery'),
                 filemtime($template_dir . '/assets/js/front-page.js'),
@@ -502,61 +542,31 @@ function gi_enqueue_external_assets() {
             );
         }
         
-        // Hero section
-        if (file_exists($template_dir . '/assets/css/section-hero.css')) {
-            wp_enqueue_style(
-                'gi-section-hero',
-                $template_uri . '/assets/css/section-hero.css',
-                array(),
-                filemtime($template_dir . '/assets/css/section-hero.css')
-            );
-        }
-        
         if (file_exists($template_dir . '/assets/js/section-hero.js')) {
             wp_enqueue_script(
-                'gi-section-hero',
+                'gi-section-hero-js',
                 $template_uri . '/assets/js/section-hero.js',
-                array('jquery'),
+                array('jquery', 'gi-front-page-js'),
                 filemtime($template_dir . '/assets/js/section-hero.js'),
                 true
             );
         }
         
-        // Search section
-        if (file_exists($template_dir . '/assets/css/section-search.css')) {
-            wp_enqueue_style(
-                'gi-section-search',
-                $template_uri . '/assets/css/section-search.css',
-                array(),
-                filemtime($template_dir . '/assets/css/section-search.css')
-            );
-        }
-        
         if (file_exists($template_dir . '/assets/js/section-search.js')) {
             wp_enqueue_script(
-                'gi-section-search',
+                'gi-section-search-js',
                 $template_uri . '/assets/js/section-search.js',
-                array('jquery'),
+                array('jquery', 'gi-front-page-js'),
                 filemtime($template_dir . '/assets/js/section-search.js'),
                 true
             );
         }
         
-        // Grant tabs section
-        if (file_exists($template_dir . '/assets/css/grant-tabs.css')) {
-            wp_enqueue_style(
-                'gi-grant-tabs',
-                $template_uri . '/assets/css/grant-tabs.css',
-                array(),
-                filemtime($template_dir . '/assets/css/grant-tabs.css')
-            );
-        }
-        
         if (file_exists($template_dir . '/assets/js/grant-tabs.js')) {
             wp_enqueue_script(
-                'gi-grant-tabs',
+                'gi-grant-tabs-js',
                 $template_uri . '/assets/js/grant-tabs.js',
-                array('jquery'),
+                array('jquery', 'gi-front-page-js'),
                 filemtime($template_dir . '/assets/js/grant-tabs.js'),
                 true
             );
@@ -569,14 +579,15 @@ function gi_enqueue_external_assets() {
             wp_enqueue_style(
                 'gi-single-column',
                 $template_uri . '/assets/css/single-column.css',
-                array(),
-                filemtime($template_dir . '/assets/css/single-column.css')
+                array('wp-block-library'),
+                filemtime($template_dir . '/assets/css/single-column.css'),
+                'all'
             );
         }
         
         if (file_exists($template_dir . '/assets/js/single-column.js')) {
             wp_enqueue_script(
-                'gi-single-column',
+                'gi-single-column-js',
                 $template_uri . '/assets/js/single-column.js',
                 array('jquery'),
                 filemtime($template_dir . '/assets/js/single-column.js'),
@@ -591,14 +602,15 @@ function gi_enqueue_external_assets() {
             wp_enqueue_style(
                 'gi-single-grant',
                 $template_uri . '/assets/css/single-grant.css',
-                array(),
-                filemtime($template_dir . '/assets/css/single-grant.css')
+                array('wp-block-library'),
+                filemtime($template_dir . '/assets/css/single-grant.css'),
+                'all'
             );
         }
         
         if (file_exists($template_dir . '/assets/js/single-grant.js')) {
             wp_enqueue_script(
-                'gi-single-grant',
+                'gi-single-grant-js',
                 $template_uri . '/assets/js/single-grant.js',
                 array('jquery'),
                 filemtime($template_dir . '/assets/js/single-grant.js'),
@@ -607,7 +619,7 @@ function gi_enqueue_external_assets() {
         }
     }
 }
-add_action('wp_enqueue_scripts', 'gi_enqueue_external_assets', 20);
+add_action('wp_enqueue_scripts', 'gi_enqueue_external_assets', 5);
 
 /**
  * ============================================================================

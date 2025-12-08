@@ -161,219 +161,219 @@ ul, ol { list-style: none; }
    ポイントまとめ - 完全修正版
    ============================================ */
 .gic-keypoints {
-    background: var(--gic-accent-light) !important;
-    border: 2px solid var(--gic-accent) !important;
-    padding: 28px !important;
-    margin: 40px 0 !important;
+    background: var(--gic-accent-light);
+    border: 2px solid var(--gic-accent);
+    padding: 28px;
+    margin: 40px 0;
 }
 
 .gic-keypoints-title {
-    font-size: 18px !important;
-    font-weight: 700 !important;
-    margin: 0 0 20px 0 !important;
-    padding: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 10px !important;
-    color: var(--gic-black) !important;
-    border: none !important;
-    border-bottom: none !important;
-    background: transparent !important;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 20px 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--gic-black);
+    border: none;
+    border-bottom: none;
+    background: transparent;
 }
 
 .gic-keypoints-title svg {
-    width: 24px !important;
-    height: 24px !important;
-    min-width: 24px !important;
-    min-height: 24px !important;
-    max-width: 24px !important;
-    max-height: 24px !important;
-    flex-shrink: 0 !important;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    max-width: 24px;
+    max-height: 24px;
+    flex-shrink: 0;
 }
 
 .gic-keypoints-list {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 16px !important;
-    list-style: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 
 .gic-keypoints-item {
-    display: flex !important;
-    align-items: flex-start !important;
-    gap: 14px !important;
-    font-size: 15px !important;
-    line-height: 1.7 !important;
-    color: var(--gic-gray-800) !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    list-style: none !important;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--gic-gray-800);
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
 
 .gic-keypoints-item::before {
-    display: none !important;
+    display: none;
 }
 
 .gic-keypoints-item::marker {
-    display: none !important;
+    display: none;
 }
 
 .gic-keypoints-num {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    background: var(--gic-black) !important;
-    color: var(--gic-white) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    flex-shrink: 0 !important;
-    margin-top: 2px !important;
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    background: var(--gic-black);
+    color: var(--gic-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
 }
 
 .gic-keypoints-text {
-    flex: 1 !important;
-    word-wrap: break-word !important;
-    overflow-wrap: break-word !important;
+    flex: 1;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 /* ============================================
    CTA - 完全修正版
    ============================================ */
 .gic-cta {
-    background: linear-gradient(135deg, var(--gic-black) 0%, var(--gic-dark) 100%) !important;
-    color: var(--gic-white) !important;
-    padding: 48px 32px !important;
-    margin: 48px 0 !important;
-    text-align: center !important;
-    position: relative !important;
-    overflow: hidden !important;
+    background: linear-gradient(135deg, var(--gic-black) 0%, var(--gic-dark) 100%);
+    color: var(--gic-white);
+    padding: 48px 32px;
+    margin: 48px 0;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
 }
 
 .gic-cta::before,
 .gic-cta::after {
-    content: '' !important;
-    position: absolute !important;
-    left: 0 !important;
-    right: 0 !important;
-    height: 4px !important;
-    background: var(--gic-accent) !important;
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gic-accent);
 }
 
-.gic-cta::before { top: 0 !important; }
-.gic-cta::after { bottom: 0 !important; }
+.gic-cta::before { top: 0; }
+.gic-cta::after { bottom: 0; }
 
 .gic-cta-inner {
-    max-width: 700px !important;
-    margin: 0 auto !important;
+    max-width: 700px;
+    margin: 0 auto;
 }
 
 .gic-cta-icon {
-    width: 64px !important;
-    height: 64px !important;
-    margin: 0 auto 20px !important;
-    background: rgba(255, 215, 0, 0.15) !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: rgba(255, 215, 0, 0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .gic-cta-icon svg {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    max-width: 32px !important;
-    color: var(--gic-accent) !important;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    max-width: 32px;
+    color: var(--gic-accent);
 }
 
 .gic-cta-title {
-    font-size: 24px !important;
-    font-weight: 900 !important;
-    margin: 0 0 12px 0 !important;
-    padding: 0 !important;
-    color: var(--gic-white) !important;
-    border: none !important;
-    background: transparent !important;
+    font-size: 24px;
+    font-weight: 900;
+    margin: 0 0 12px 0;
+    padding: 0;
+    color: var(--gic-white);
+    border: none;
+    background: transparent;
 }
 
 .gic-cta-desc {
-    font-size: 16px !important;
-    color: rgba(255, 255, 255, 0.9) !important;
-    margin: 0 0 28px 0 !important;
-    line-height: 1.7 !important;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 28px 0;
+    line-height: 1.7;
 }
 
 .gic-cta-buttons {
-    display: flex !important;
-    justify-content: center !important;
-    gap: 16px !important;
-    flex-wrap: wrap !important;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
 }
 
 .gic-cta-btn {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 10px !important;
-    padding: 16px 28px !important;
-    font-size: 16px !important;
-    font-weight: 700 !important;
-    border: 2px solid !important;
-    text-decoration: none !important;
-    transition: all 0.2s ease !important;
-    min-width: 180px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px 28px;
+    font-size: 16px;
+    font-weight: 700;
+    border: 2px solid;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    min-width: 180px;
 }
 
 .gic-cta-btn svg {
-    width: 20px !important;
-    height: 20px !important;
-    min-width: 20px !important;
-    max-width: 20px !important;
-    flex-shrink: 0 !important;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    max-width: 20px;
+    flex-shrink: 0;
 }
 
 .gic-cta-btn-primary {
-    background: var(--gic-accent) !important;
-    border-color: var(--gic-accent) !important;
-    color: var(--gic-black) !important;
+    background: var(--gic-accent);
+    border-color: var(--gic-accent);
+    color: var(--gic-black);
 }
 
 .gic-cta-btn-primary:hover {
-    background: var(--gic-accent-dark) !important;
-    border-color: var(--gic-accent-dark) !important;
-    transform: translateY(-2px) !important;
+    background: var(--gic-accent-dark);
+    border-color: var(--gic-accent-dark);
+    transform: translateY(-2px);
 }
 
 .gic-cta-btn-secondary {
-    background: transparent !important;
-    border-color: var(--gic-white) !important;
-    color: var(--gic-white) !important;
+    background: transparent;
+    border-color: var(--gic-white);
+    color: var(--gic-white);
 }
 
 .gic-cta-btn-secondary:hover {
-    background: var(--gic-white) !important;
-    color: var(--gic-black) !important;
-    transform: translateY(-2px) !important;
+    background: var(--gic-white);
+    color: var(--gic-black);
+    transform: translateY(-2px);
 }
 
 @media (max-width: 768px) {
-    .gic-keypoints { padding: 20px 16px !important; margin: 28px 0 !important; }
-    .gic-keypoints-title { font-size: 16px !important; }
-    .gic-keypoints-title svg { width: 20px !important; height: 20px !important; min-width: 20px !important; max-width: 20px !important; }
-    .gic-keypoints-item { gap: 12px !important; font-size: 14px !important; }
-    .gic-keypoints-num { width: 24px !important; height: 24px !important; min-width: 24px !important; font-size: 12px !important; }
-    .gic-cta { padding: 36px 20px !important; margin: 36px 0 !important; }
-    .gic-cta-icon { width: 56px !important; height: 56px !important; }
-    .gic-cta-icon svg { width: 28px !important; height: 28px !important; }
-    .gic-cta-title { font-size: 20px !important; }
-    .gic-cta-desc { font-size: 14px !important; }
-    .gic-cta-buttons { flex-direction: column !important; gap: 12px !important; }
-    .gic-cta-btn { width: 100% !important; padding: 14px 24px !important; font-size: 15px !important; }
+    .gic-keypoints { padding: 20px 16px; margin: 28px 0; }
+    .gic-keypoints-title { font-size: 16px; }
+    .gic-keypoints-title svg { width: 20px; height: 20px; min-width: 20px; max-width: 20px; }
+    .gic-keypoints-item { gap: 12px; font-size: 14px; }
+    .gic-keypoints-num { width: 24px; height: 24px; min-width: 24px; font-size: 12px; }
+    .gic-cta { padding: 36px 20px; margin: 36px 0; }
+    .gic-cta-icon { width: 56px; height: 56px; }
+    .gic-cta-icon svg { width: 28px; height: 28px; }
+    .gic-cta-title { font-size: 20px; }
+    .gic-cta-desc { font-size: 14px; }
+    .gic-cta-buttons { flex-direction: column; gap: 12px; }
+    .gic-cta-btn { width: 100%; padding: 14px 24px; font-size: 15px; }
 }
 
 /* FAQ */
@@ -549,13 +549,13 @@ ul, ol { list-style: none; }
 
 /* 印刷 */
 @media print {
-    .gic-sidebar, .gic-mobile-fab, .gic-mobile-overlay, .gic-mobile-panel, .gic-progress, .gic-related, .gic-ai-section, .gic-cta, .gic-share { display: none !important; }
+    .gic-sidebar, .gic-mobile-fab, .gic-mobile-overlay, .gic-mobile-panel, .gic-progress, .gic-related, .gic-ai-section, .gic-cta, .gic-share { display: none; }
     .gic-layout { grid-template-columns: 1fr; }
-    .gic-page { padding-bottom: 0 !important; }
+    .gic-page { padding-bottom: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    *, *::before, *::after { animation-duration: 0.01ms; transition-duration: 0.01ms; }
 }
 :focus-visible { outline: 3px solid var(--gic-accent); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
