@@ -626,8 +626,17 @@ if ($grant['ai_summary']) {
 }
 </script>
 
-<link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/single-grant.css?v=302'); ?>">
+<?php
+// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
+wp_head();
+?>
+</head>
+<body <?php body_class('gi-grant-page'); ?>>
+<?php wp_body_open(); ?>
 
+<!-- Breadcrumb -->
+<nav class="gi-breadcrumb" aria-label="パンくずリスト">
+    <ol class="gi-breadcrumb-list" itemscope itemtype="https://schema.org/BreadcrumbList">
         <?php foreach ($breadcrumbs as $i => $crumb): ?>
         <li>
             <?php if ($i < count($breadcrumbs) - 1): ?>

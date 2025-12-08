@@ -584,6 +584,28 @@ function gi_enqueue_external_assets() {
             );
         }
     }
+    
+    // Single Grant Page (補助金詳細)
+    if (is_singular('grant') || (is_page() && get_page_template_slug() === 'single-grant.php')) {
+        if (file_exists($template_dir . '/assets/css/single-grant.css')) {
+            wp_enqueue_style(
+                'gi-single-grant',
+                $template_uri . '/assets/css/single-grant.css',
+                array(),
+                filemtime($template_dir . '/assets/css/single-grant.css')
+            );
+        }
+        
+        if (file_exists($template_dir . '/assets/js/single-grant.js')) {
+            wp_enqueue_script(
+                'gi-single-grant',
+                $template_uri . '/assets/js/single-grant.js',
+                array('jquery'),
+                filemtime($template_dir . '/assets/js/single-grant.js'),
+                true
+            );
+        }
+    }
 }
 add_action('wp_enqueue_scripts', 'gi_enqueue_external_assets', 20);
 
