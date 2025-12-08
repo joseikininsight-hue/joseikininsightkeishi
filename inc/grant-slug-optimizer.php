@@ -565,6 +565,7 @@ function gi_slug_optimizer_admin_page() {
             <div id="conversion-result" style="display: none; margin: 20px 0;"></div>
             
             <p>
+                <input type="hidden" id="gi_bulk_convert_nonce" value="<?php echo wp_create_nonce('gi_bulk_convert_nonce'); ?>" />
                 <button type="button" id="start-conversion" class="button button-primary button-large">
                     🚀 一括変換を開始
                 </button>
@@ -729,6 +730,9 @@ function gi_slug_optimizer_admin_page() {
         var isConverting = false;
         var totalToConvert = <?php echo $needs_conversion; ?>;
         var converted = 0;
+        var bulkConvertNonce = $('#gi_bulk_convert_nonce').val();
+        
+        console.log('[Slug Optimizer] Nonce loaded:', bulkConvertNonce ? 'yes' : 'no');
         
         $('#start-conversion').on('click', function() {
             if (isConverting) return;
@@ -749,9 +753,10 @@ function gi_slug_optimizer_admin_page() {
         });
         
         function runBatch() {
+            console.log('[Slug Optimizer] Running batch with nonce:', bulkConvertNonce);
             $.post(ajaxurl, {
                 action: 'gi_bulk_convert_slugs',
-                _wpnonce: '<?php echo wp_create_nonce('gi_bulk_convert_nonce'); ?>'
+                _wpnonce: bulkConvertNonce
             })
             .done(function(response) {
                 if (response.success) {
@@ -808,13 +813,29 @@ function gi_slug_optimizer_admin_page() {
  * AJAX: 一括変換処理
  */
 function gi_ajax_bulk_convert_slugs() {
-    // セキュリティチェック
-    if (!wp_verify_nonce($_POST['_wpnonce'], 'gi_bulk_convert_nonce')) {
-        wp_send_json_error(array('message' => 'セキュリティチェックに失敗しました'));
+    // セキュリティチェック - nonceを検証
+    $nonce = isset($_POST['_wpnonce']) ? sanitize_text_field($_POST['_wpnonce']) : '';
+    
+    // デバッグ用ログ
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('[Slug Optimizer] AJAX called. Nonce: ' . $nonce);
+        error_log('[Slug Optimizer] Nonce verify result: ' . (wp_verify_nonce($nonce, 'gi_bulk_convert_nonce') ? 'valid' : 'invalid'));
+    }
+    
+    if (!wp_verify_nonce($nonce, 'gi_bulk_convert_nonce')) {
+        wp_send_json_error(array(
+            'message' => 'セキュリティチェックに失敗しました',
+            'debug' => array(
+                'nonce_received' => !empty($nonce),
+                'nonce_action' => 'gi_bulk_convert_nonce'
+            )
+        ));
+        return;
     }
     
     if (!current_user_can('manage_options')) {
         wp_send_json_error(array('message' => '権限がありません'));
+        return;
     }
     
     // バッチ処理を実行
