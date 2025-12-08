@@ -11,24 +11,9 @@ if (!defined('ABSPATH')) {
     exit('Direct access forbidden.');
 }
 
-// Enqueue section-search external CSS and JS
-wp_enqueue_style(
-    'gic-section-search',
-    get_template_directory_uri() . '/assets/css/section-search.css',
-    array(),
-    filemtime(get_template_directory() . '/assets/css/section-search.css')
-);
-
-wp_enqueue_script(
-    'gic-section-search',
-    get_template_directory_uri() . '/assets/js/section-search.js',
-    array(),
-    filemtime(get_template_directory() . '/assets/js/section-search.js'),
-    true
-);
-
 // ==========================================================================
 // データ取得（パフォーマンス最適化）
+// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
 // ==========================================================================
 
 $cache_key = 'search_section_data_v53';

@@ -473,6 +473,121 @@ function gi_enqueue_rest_api_settings() {
 add_action('wp_enqueue_scripts', 'gi_enqueue_rest_api_settings');
 
 /**
+ * Enqueue External CSS and JS Files
+ * 外部ファイル化されたCSS/JSの読み込み
+ */
+function gi_enqueue_external_assets() {
+    $template_dir = get_template_directory();
+    $template_uri = get_template_directory_uri();
+    
+    // Front Page (フロントページ)
+    if (is_front_page() || is_home()) {
+        // Front page main styles and scripts
+        if (file_exists($template_dir . '/assets/css/front-page.css')) {
+            wp_enqueue_style(
+                'gi-front-page',
+                $template_uri . '/assets/css/front-page.css',
+                array(),
+                filemtime($template_dir . '/assets/css/front-page.css')
+            );
+        }
+        
+        if (file_exists($template_dir . '/assets/js/front-page.js')) {
+            wp_enqueue_script(
+                'gi-front-page',
+                $template_uri . '/assets/js/front-page.js',
+                array('jquery'),
+                filemtime($template_dir . '/assets/js/front-page.js'),
+                true
+            );
+        }
+        
+        // Hero section
+        if (file_exists($template_dir . '/assets/css/section-hero.css')) {
+            wp_enqueue_style(
+                'gi-section-hero',
+                $template_uri . '/assets/css/section-hero.css',
+                array(),
+                filemtime($template_dir . '/assets/css/section-hero.css')
+            );
+        }
+        
+        if (file_exists($template_dir . '/assets/js/section-hero.js')) {
+            wp_enqueue_script(
+                'gi-section-hero',
+                $template_uri . '/assets/js/section-hero.js',
+                array('jquery'),
+                filemtime($template_dir . '/assets/js/section-hero.js'),
+                true
+            );
+        }
+        
+        // Search section
+        if (file_exists($template_dir . '/assets/css/section-search.css')) {
+            wp_enqueue_style(
+                'gi-section-search',
+                $template_uri . '/assets/css/section-search.css',
+                array(),
+                filemtime($template_dir . '/assets/css/section-search.css')
+            );
+        }
+        
+        if (file_exists($template_dir . '/assets/js/section-search.js')) {
+            wp_enqueue_script(
+                'gi-section-search',
+                $template_uri . '/assets/js/section-search.js',
+                array('jquery'),
+                filemtime($template_dir . '/assets/js/section-search.js'),
+                true
+            );
+        }
+        
+        // Grant tabs section
+        if (file_exists($template_dir . '/assets/css/grant-tabs.css')) {
+            wp_enqueue_style(
+                'gi-grant-tabs',
+                $template_uri . '/assets/css/grant-tabs.css',
+                array(),
+                filemtime($template_dir . '/assets/css/grant-tabs.css')
+            );
+        }
+        
+        if (file_exists($template_dir . '/assets/js/grant-tabs.js')) {
+            wp_enqueue_script(
+                'gi-grant-tabs',
+                $template_uri . '/assets/js/grant-tabs.js',
+                array('jquery'),
+                filemtime($template_dir . '/assets/js/grant-tabs.js'),
+                true
+            );
+        }
+    }
+    
+    // Single Column Page (コラム記事詳細)
+    if (is_singular('column') || (is_page() && get_page_template_slug() === 'single-column.php')) {
+        if (file_exists($template_dir . '/assets/css/single-column.css')) {
+            wp_enqueue_style(
+                'gi-single-column',
+                $template_uri . '/assets/css/single-column.css',
+                array(),
+                filemtime($template_dir . '/assets/css/single-column.css')
+            );
+        }
+        
+        if (file_exists($template_dir . '/assets/js/single-column.js')) {
+            wp_enqueue_script(
+                'gi-single-column',
+                $template_uri . '/assets/js/single-column.js',
+                array('jquery'),
+                filemtime($template_dir . '/assets/js/single-column.js'),
+                true
+            );
+        }
+    }
+}
+add_action('wp_enqueue_scripts', 'gi_enqueue_external_assets', 20);
+
+/**
  * ============================================================================
  * ADDITIONAL INCLUDE FILES
  * ============================================================================

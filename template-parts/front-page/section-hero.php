@@ -11,24 +11,9 @@ if (!defined('ABSPATH')) {
     exit('Direct access forbidden.');
 }
 
-// Enqueue section-hero external CSS and JS
-wp_enqueue_style(
-    'gic-section-hero',
-    get_template_directory_uri() . '/assets/css/section-hero.css',
-    array(),
-    filemtime(get_template_directory() . '/assets/css/section-hero.css')
-);
-
-wp_enqueue_script(
-    'gic-section-hero',
-    get_template_directory_uri() . '/assets/js/section-hero.js',
-    array(),
-    filemtime(get_template_directory() . '/assets/js/section-hero.js'),
-    true
-);
-
 // ==========================================================================
 // 設定値
+// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
 // ==========================================================================
 $hero_config = [
     // テキスト

@@ -16,24 +16,9 @@
 
 if (!defined('ABSPATH')) exit;
 
-// Enqueue grant-tabs external CSS and JS
-wp_enqueue_style(
-    'gic-grant-tabs',
-    get_template_directory_uri() . '/assets/css/grant-tabs.css',
-    array(),
-    filemtime(get_template_directory() . '/assets/css/grant-tabs.css')
-);
-
-wp_enqueue_script(
-    'gic-grant-tabs',
-    get_template_directory_uri() . '/assets/js/grant-tabs.js',
-    array(),
-    filemtime(get_template_directory() . '/assets/js/grant-tabs.js'),
-    true
-);
-
 // ==========================================================================
 // データ取得（パフォーマンス最適化）
+// Note: CSS/JS are enqueued in functions.php via gi_enqueue_external_assets()
 // ==========================================================================
 
 $today = date('Y-m-d');
