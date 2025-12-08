@@ -791,11 +791,11 @@ figure {
     .ui-tabs-wrapper,
     .ui-ranking-section,
     .ui-btn-more {
-        display: none !important;
+        display: none;
     }
     
     .ui-panel {
-        display: block !important;
+        display: block;
     }
     
     .ui-card,
@@ -813,10 +813,10 @@ figure {
     *,
     *::before,
     *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-        scroll-behavior: auto !important;
+        animation-duration: 0.01ms;
+        animation-iteration-count: 1;
+        transition-duration: 0.01ms;
+        scroll-behavior: auto;
     }
 }
 
