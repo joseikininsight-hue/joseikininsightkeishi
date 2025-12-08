@@ -982,12 +982,17 @@ function gi_slug_optimizer_admin_page() {
                     if (response.success) {
                         var data = response.data;
                         
-                        state.processed += data.processed;
-                        state.success += data.success;
-                        state.skipped += data.skipped;
-                        state.failed += data.failed;
+                        state.processed += data.processed || 0;
+                        state.success += data.success || 0;
+                        state.skipped += data.skipped || 0;
+                        state.failed += data.failed || 0;
                         
-                        addLog('success', '処理完了: ' + data.processed + '件 (成功: ' + data.success + ', スキップ: ' + data.skipped + ', 失敗: ' + data.failed + ')');
+                        addLog('success', '処理完了: ' + (data.processed || 0) + '件 (成功: ' + (data.success || 0) + ', スキップ: ' + (data.skipped || 0) + ', 失敗: ' + (data.failed || 0) + ')');
+                        
+                        // エラーメッセージがあれば表示
+                        if (data.error) {
+                            addLog('warning', 'バッチ警告: ' + data.error);
+                        }
                         
                         // 詳細ログ
                         if (data.details && data.details.length > 0) {
@@ -1002,14 +1007,22 @@ function gi_slug_optimizer_admin_page() {
                         
                         updateUI();
                         
-                        if (data.remaining > 0) {
-                            addLog('info', '残り ' + data.remaining + ' 件。次のバッチを開始...');
-                            setTimeout(runBatch, 300);
+                        var remaining = data.remaining || 0;
+                        if (remaining > 0) {
+                            addLog('info', '残り ' + remaining + ' 件。次のバッチを開始...');
+                            setTimeout(runBatch, 500); // 少し長めの間隔
                         } else {
                             finishConversion(true, '全ての変換が完了しました！ (成功: ' + state.success + ', スキップ: ' + state.skipped + ', 失敗: ' + state.failed + ')');
                         }
                     } else {
-                        handleError(response.data ? response.data.message : '不明なエラー');
+                        // エラーでも詳細を表示
+                        var errMsg = '不明なエラー';
+                        if (response.data) {
+                            errMsg = response.data.message || errMsg;
+                            if (response.data.code) errMsg += ' [' + response.data.code + ']';
+                            if (response.data.file) errMsg += ' (' + response.data.file + ':' + response.data.line + ')';
+                        }
+                        handleError(errMsg);
                     }
                 },
                 error: function(xhr, status, error) {
@@ -1031,15 +1044,27 @@ function gi_slug_optimizer_admin_page() {
             state.retryCount++;
             
             if (state.retryCount <= state.maxRetries) {
-                var waitTime = state.retryCount * 2000; // リトライごとに待機時間を増やす
+                var waitTime = state.retryCount * 3000; // リトライごとに待機時間を増やす（3秒ずつ）
                 addLog('warning', state.retryCount + '回目のリトライを ' + (waitTime/1000) + '秒後に実行...');
                 
                 setTimeout(function() {
-                    // nonceを再取得（セッション切れ対策）
-                    refreshNonceAndRetry();
+                    // まず直接リトライを試みる
+                    if (state.retryCount <= 2) {
+                        addLog('info', '直接リトライを試行...');
+                        runBatch();
+                    } else {
+                        // 3回目以降はnonce再取得を試みる
+                        refreshNonceAndRetry();
+                    }
                 }, waitTime);
             } else {
-                finishConversion(false, 'エラーが発生しました。処理済み: ' + state.processed + '件。ページをリロードして続きを実行してください。');
+                // 最大リトライ超えても処理済み件数があれば成功扱い
+                if (state.processed > 0) {
+                    addLog('warning', '一部処理完了。残りはページリロード後に再開してください。');
+                    finishConversion(false, '一部処理完了: ' + state.processed + '件処理済み。ページをリロードして続きを実行してください。');
+                } else {
+                    finishConversion(false, 'エラーが発生しました。ページをリロードしてください。');
+                }
             }
         }
         
@@ -1052,22 +1077,25 @@ function gi_slug_optimizer_admin_page() {
             $.ajax({
                 url: ajaxurl,
                 type: 'POST',
+                timeout: 30000,
                 data: {
                     action: 'gi_refresh_slug_nonce'
                 },
                 success: function(response) {
-                    if (response.success && response.data.nonce) {
+                    if (response.success && response.data && response.data.nonce) {
                         state.nonce = response.data.nonce;
                         addLog('success', 'トークン再取得成功。処理を再開します。');
-                        runBatch();
+                        state.retryCount = 0; // リトライカウントをリセット
+                        setTimeout(runBatch, 1000);
                     } else {
-                        addLog('error', 'トークン再取得失敗。ページをリロードしてください。');
-                        finishConversion(false, 'セキュリティトークンの再取得に失敗しました。ページをリロードしてください。');
+                        addLog('warning', 'トークン再取得失敗。元のトークンで再試行...');
+                        // 失敗しても元のnonceで再試行
+                        setTimeout(runBatch, 2000);
                     }
                 },
-                error: function() {
-                    addLog('error', 'トークン再取得通信エラー');
-                    runBatch(); // 古いnonceで再試行
+                error: function(xhr, status, error) {
+                    addLog('warning', 'トークン再取得通信エラー (' + status + ')。元のトークンで再試行...');
+                    setTimeout(runBatch, 2000); // 2秒後に古いnonceで再試行
                 }
             });
         }
