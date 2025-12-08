@@ -773,3 +773,9 @@ $grant_article_creator_file = get_template_directory() . '/inc/grant-article-cre
 if (file_exists($grant_article_creator_file)) {
     require_once $grant_article_creator_file;
 }
+
+// URLスラッグ最適化システム（日本語URL → 投稿IDベースURL + 301リダイレクト）
+$grant_slug_optimizer_file = get_template_directory() . '/inc/grant-slug-optimizer.php';
+if (file_exists($grant_slug_optimizer_file)) {
+    require_once $grant_slug_optimizer_file;
+}
