@@ -120,9 +120,13 @@ $schema_breadcrumb = array(
         )
     )
 );
-?>
 
-<link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/front-page.css?v=11'); ?>">
+// フロントページ専用CSSを読み込み
+wp_enqueue_style('front-page-style', get_template_directory_uri() . '/assets/css/front-page.css', array(), '11.0.0');
+
+// フロントページ専用JSを読み込み
+wp_enqueue_script('front-page-script', get_template_directory_uri() . '/assets/js/front-page.js', array(), '12.0.0', true);
+?>
 
 <a href="#main-content" class="skip-to-content" aria-label="メインコンテンツへスキップ">
     メインコンテンツへスキップ
@@ -183,47 +187,7 @@ $schema_breadcrumb = array(
              aria-labelledby="final-cta-title"
              itemscope 
              itemtype="https://schema.org/Service">
-        
-        <div class="cta-diagnosis-section">
-            <div class="cta-diagnosis-wrapper">
-                <div class="cta-diagnosis-content">
-                    <div class="cta-icon">
-                        <i class="fas fa-clipboard-check" aria-hidden="true"></i>
-                    </div>
-                    
-                    <h2 id="final-cta-title" class="cta-title" itemprop="name">
-                        あなたに最適な補助金を無料診断
-                    </h2>
-                    
-                    <p class="cta-description" itemprop="description">
-                        簡単な質問に答えるだけで、あなたの事業に最適な補助金・助成金を診断します。<br class="pc-only">
-                        診断は完全無料、所要時間はわずか3分です。
-                    </p>
-                    
-                    <div class="cta-button-group">
-                        <a href="<?php echo esc_url(home_url('/grants/')); ?>" 
-                           class="cta-button cta-button-secondary"
-                           title="補助金一覧から探す">
-                            <i class="fas fa-search" aria-hidden="true"></i>
-                            <span>補助金を探す</span>
-                        </a>
-
-                        <a href="https://joseikin-insight.com/subsidy-diagnosis/" 
-                           class="cta-button cta-button-primary"
-                           itemprop="url"
-                           title="無料診断を今すぐ始める">
-                            <i class="fas fa-play-circle" aria-hidden="true"></i>
-                            <span>今すぐ無料診断を始める</span>
-                        </a>
-                    </div>
-
-                    <p class="cta-note">
-                        <i class="fas fa-info-circle" aria-hidden="true"></i>
-                        <span>会員登録不要・メールアドレス不要</span>
-                    </p>
-                </div>
-            </div>
-        </div>
+        <?php get_template_part('template-parts/front-page/section', 'cta'); ?>
     </section>
 
 </main>
@@ -233,124 +197,6 @@ $schema_breadcrumb = array(
 <!-- BreadcrumbList構造化データ -->
 <script type="application/ld+json">
 <?php echo wp_json_encode($schema_breadcrumb, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
-</script>
-
-<script>
-/**
- * Front Page JS - v12.0 (Performance Optimized)
- * カクカク問題修正: scrollHeight/innerHeightをキャッシュ化
- */
-(function() {
-    'use strict';
-    
-    // ★パフォーマンス改善: 高さをキャッシュ
-    let cachedWinH = window.innerHeight;
-    let cachedDocH = document.documentElement.scrollHeight;
-    let resizeTimer;
-    
-    window.addEventListener('resize', () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => {
-            cachedWinH = window.innerHeight;
-            cachedDocH = document.documentElement.scrollHeight;
-        }, 150);
-    }, {passive: true});
-    
-    // DOMContentLoaded後に高さを再取得
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                cachedDocH = document.documentElement.scrollHeight;
-            }, 100);
-            init();
-        });
-    } else {
-        init();
-    }
-    
-    function init() {
-        setupScrollProgress();
-        // アニメーションは即座に表示（カクカク防止）
-        document.querySelectorAll('.section-animate').forEach(el => el.classList.add('visible'));
-        setupSmoothScroll();
-        if('performance' in window) monitorPerf();
-        setupSEOTracking();
-    }
-    
-    function setupScrollProgress() {
-        const bar = document.getElementById('scroll-progress');
-        if(!bar) return;
-        let ticking = false;
-        window.addEventListener('scroll', () => {
-            if(!ticking) {
-                window.requestAnimationFrame(() => {
-                    // キャッシュした値を使用
-                    const pct = cachedDocH - cachedWinH > 0 ? (window.scrollY / (cachedDocH - cachedWinH)) * 100 : 0;
-                    bar.style.width = Math.min(Math.max(pct, 0), 100) + '%';
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        }, {passive:true});
-    }
-    
-    function setupSmoothScroll() {
-        document.querySelectorAll('a[href^="#"]').forEach(a => {
-            a.addEventListener('click', function(e) {
-                const h = this.getAttribute('href');
-                if(h && h !== '#' && h !== '#0') {
-                    const t = document.querySelector(h);
-                    if(t) {
-                        e.preventDefault();
-                        window.scrollTo({top: t.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth'});
-                    }
-                }
-            });
-        });
-    }
-
-    function monitorPerf() {
-        window.addEventListener('load', () => {
-            // 高さを最終更新
-            cachedDocH = document.documentElement.scrollHeight;
-            setTimeout(() => {
-                const p = performance.getEntriesByType('navigation')[0];
-                if(p && typeof gtag !== 'undefined') {
-                    gtag('event', 'page_timing', {'event_category':'Performance', 'value':Math.round(p.loadEventEnd - p.loadEventStart)});
-                }
-            }, 0);
-        });
-    }
-
-    function setupSEOTracking() {
-        let maxScroll = 0;
-        const points = [25,50,75,100];
-        const tracked = new Set();
-        let tick = false;
-        
-        window.addEventListener('scroll', () => {
-            if(!tick) {
-                window.requestAnimationFrame(() => {
-                    // キャッシュした値を使用
-                    const pct = Math.round((window.scrollY / (cachedDocH - cachedWinH)) * 100);
-                    if(pct > maxScroll) {
-                        maxScroll = pct;
-                        points.forEach(p => {
-                            if(pct >= p && !tracked.has(p)) {
-                                tracked.add(p);
-                                if(typeof gtag !== 'undefined') {
-                                    gtag('event', 'scroll_depth', {'event_category':'Engagement', 'event_label':p+'%', 'value':p});
-                                }
-                            }
-                        });
-                    }
-                    tick = false;
-                });
-                tick = true;
-            }
-        }, {passive:true});
-    }
-})();
 </script>
 
 <?php get_footer(); ?>

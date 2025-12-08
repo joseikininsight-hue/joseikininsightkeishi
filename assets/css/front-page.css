@@ -1,8 +1,14 @@
 /**
- * Front Page Styles - Complete Unified Version v11.0
- * トップページ専用スタイル
+ * Front Page - Complete Unified Version v11.0
+ * フロントページ専用スタイル
+ * 
+ * @package Grant_Insight_Perfect
+ * @version 11.0.0
  */
 
+/* ============================================
+   CSS Variables
+   ============================================ */
 :root {
     --fp-color-bg-primary: #ffffff;
     --fp-color-bg-secondary: #f8f9fa;
@@ -14,60 +20,158 @@
     --fp-transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-html { scroll-behavior: smooth; height: 100%; overflow-y: auto !important; }
-body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
-
-.site-main {
-    padding: 0; margin: 0; background: var(--fp-color-bg-primary);
-    position: relative; width: 100%; overflow: visible;
+/* ============================================
+   Base Styles
+   ============================================ */
+html {
+    scroll-behavior: smooth;
+    height: 100%;
+    overflow-y: auto !important;
 }
 
-#main-content { margin-top: var(--fp-header-height) !important; padding-top: 0 !important; }
+body {
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* ============================================
+   Main Container
+   ============================================ */
+.site-main {
+    padding: 0;
+    margin: 0;
+    background: var(--fp-color-bg-primary);
+    position: relative;
+    width: 100%;
+    overflow: visible;
+}
+
+#main-content {
+    margin-top: var(--fp-header-height) !important;
+    padding-top: 0 !important;
+}
 
 .front-page-section {
-    position: relative; margin: 0; padding: 0; width: 100%; display: block; overflow: visible;
+    position: relative;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    display: block;
+    overflow: visible;
 }
 
-/* Background Effects */
+/* ============================================
+   Background Effects
+   ============================================ */
 .site-main::before {
-    content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background: linear-gradient(135deg, var(--fp-color-gradient-start), #fff, var(--fp-color-gradient-end));
-    z-index: -2; pointer-events: none;
-}
-.site-main::after {
-    content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background-image: repeating-linear-gradient(0deg, transparent, transparent 19px, var(--fp-color-overlay) 19px, var(--fp-color-overlay) 20px),
-                      repeating-linear-gradient(90deg, transparent, transparent 19px, var(--fp-color-overlay) 19px, var(--fp-color-overlay) 20px);
-    background-size: 20px 20px; opacity: 0.4; z-index: -1; pointer-events: none;
+    z-index: -2;
+    pointer-events: none;
 }
 
-/* Scroll Progress */
+.site-main::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        repeating-linear-gradient(0deg, transparent, transparent 19px, var(--fp-color-overlay) 19px, var(--fp-color-overlay) 20px),
+        repeating-linear-gradient(90deg, transparent, transparent 19px, var(--fp-color-overlay) 19px, var(--fp-color-overlay) 20px);
+    background-size: 20px 20px;
+    opacity: 0.4;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* ============================================
+   Scroll Progress Bar
+   ============================================ */
 .scroll-progress {
-    position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    width: 0%;
     background: linear-gradient(90deg, #333 0%, #666 50%, #333 100%);
-    background-size: 200% 100%; z-index: 9999; transition: width 0.1s ease;
+    background-size: 200% 100%;
+    z-index: 9999;
+    transition: width 0.1s ease;
     animation: fp-shimmer 2s ease-in-out infinite;
 }
-@keyframes fp-shimmer { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
 
-/* Ad Space */
-.front-ad-space { max-width: 1200px; margin: 20px auto; padding: 0 20px; position: relative; z-index: 1; }
+@keyframes fp-shimmer {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+}
 
-/* Animation */
-.section-animate { opacity: 1; transform: translateY(0); transition: opacity 0.8s, transform 0.8s; }
+/* ============================================
+   Ad Space
+   ============================================ */
+.front-ad-space {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+    position: relative;
+    z-index: 1;
+}
+
+/* ============================================
+   Section Animation
+   ============================================ */
+.section-animate {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.8s, transform 0.8s;
+}
+
 @media (min-width: 1024px) {
-    .section-animate { opacity: 0; transform: translateY(30px); }
-    .section-animate.visible { opacity: 1; transform: translateY(0); }
+    .section-animate {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    .section-animate.visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-/* Skip Link */
+/* ============================================
+   Skip Link (Accessibility)
+   ============================================ */
 .skip-to-content {
-    position: absolute; top: -40px; left: 0; background: #000; color: #fff;
-    padding: 8px 16px; z-index: 100000; transition: top 0.3s; font-weight: 700;
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: #000;
+    color: #fff;
+    padding: 8px 16px;
+    z-index: 100000;
+    transition: top 0.3s;
+    font-weight: 700;
 }
-.skip-to-content:focus { top: 0; outline: 3px solid var(--fp-color-accent); }
 
-/* Final CTA Section */
+.skip-to-content:focus {
+    top: 0;
+    outline: 3px solid var(--fp-color-accent);
+}
+
+/* ============================================
+   Final CTA Section
+   ============================================ */
 .cta-diagnosis-section {
     background: #111111 !important;
     color: #ffffff !important;
@@ -85,12 +189,14 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
     z-index: 2;
 }
 
+/* CTA Icon */
 .cta-icon i {
     font-size: 48px;
     color: #FFD700;
     margin-bottom: 24px;
 }
 
+/* CTA Title */
 .cta-title {
     font-family: 'Noto Sans JP', sans-serif;
     font-size: 36px;
@@ -101,6 +207,7 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
     line-height: 1.3;
 }
 
+/* CTA Description */
 .cta-description {
     font-size: 16px;
     color: #e5e5e5 !important;
@@ -109,6 +216,7 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
     font-weight: 500;
 }
 
+/* CTA Button Group */
 .cta-button-group {
     display: flex;
     justify-content: center;
@@ -117,6 +225,7 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
     margin-bottom: 24px;
 }
 
+/* CTA Button Base */
 .cta-button {
     display: inline-flex;
     align-items: center;
@@ -131,29 +240,37 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
     min-width: 240px;
 }
 
+/* CTA Button Primary (White Background, Black Text) */
 .cta-button-primary {
     background: #ffffff;
     color: #111111;
     border: 2px solid #ffffff;
 }
+
 .cta-button-primary:hover {
     background: #f0f0f0;
     transform: translateY(-3px);
-    box-shadow: 0 10px 20px rgba(255,255,255,0.1);
+    box-shadow: 0 10px 20px rgba(255, 255, 255, 0.1);
 }
 
+/* CTA Button Secondary (Transparent Background, White Border) */
 .cta-button-secondary {
     background: transparent;
     color: #ffffff;
     border: 2px solid #ffffff;
 }
+
 .cta-button-secondary:hover {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     transform: translateY(-3px);
 }
 
-.cta-button i, .cta-button svg { flex-shrink: 0; }
+.cta-button i,
+.cta-button svg {
+    flex-shrink: 0;
+}
 
+/* CTA Note */
 .cta-note {
     font-size: 13px;
     color: #cccccc !important;
@@ -163,18 +280,49 @@ body { margin: 0; padding: 0; min-height: 100vh; overflow-x: hidden; }
     gap: 6px;
 }
 
-/* Responsive */
+/* ============================================
+   Responsive Styles
+   ============================================ */
 @media (max-width: 767px) {
-    .cta-title { font-size: 26px; }
-    .cta-description { font-size: 14px; text-align: left; }
-    .cta-button-group { flex-direction: column; gap: 16px; }
-    .cta-button { width: 100%; }
+    .cta-title {
+        font-size: 26px;
+    }
+    
+    .cta-description {
+        font-size: 14px;
+        text-align: left;
+    }
+    
+    .cta-button-group {
+        flex-direction: column;
+        gap: 16px;
+    }
+    
+    .cta-button {
+        width: 100%;
+    }
 }
 
 @media (max-width: 1023px) {
-    .site-main, .front-page-section { display: block !important; width: 100% !important; height: auto !important; opacity: 1 !important; transform: none !important; }
+    .site-main,
+    .front-page-section {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
 }
 
+/* ============================================
+   Print Styles
+   ============================================ */
 @media print {
-    .site-main::before, .site-main::after, .scroll-progress, .skip-to-content, .front-ad-space { display: none !important; }
+    .site-main::before,
+    .site-main::after,
+    .scroll-progress,
+    .skip-to-content,
+    .front-ad-space {
+        display: none !important;
+    }
 }
