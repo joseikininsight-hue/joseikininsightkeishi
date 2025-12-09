@@ -1546,6 +1546,5 @@ var CONFIG = {
     totalChecklist: <?php echo count($checklist_items); ?>
 };
 </script>
-<script src="<?php echo esc_url(get_template_directory_uri() . '/assets/js/single-grant.js?v=302'); ?>"></script>
 
 <?php get_footer(); ?>
