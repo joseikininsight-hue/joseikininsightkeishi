@@ -886,8 +886,8 @@ wp_head();
                 <section class="gi-section" id="checklist" aria-labelledby="checklist-title">
                     <div class="gi-checklist">
                         <header class="gi-checklist-header">
-                            <h2 class="gi-checklist-title" id="checklist-title" style="color: #ffffff !important; margin: 0 !important;">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #ffffff !important;"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            <h2 class="gi-checklist-title" id="checklist-title">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                                 申請前チェックリスト
                             </h2>
                             <div class="gi-checklist-actions">
@@ -913,7 +913,7 @@ wp_head();
                             $cat_info = isset($checklist_categories[$cat_key]) ? $checklist_categories[$cat_key] : array('label' => $cat_key);
                         ?>
                         <div class="gi-checklist-category">
-                            <div class="gi-checklist-category-header" style="color: #ffffff !important; background: #333 !important;"><?php echo esc_html($cat_info['label']); ?></div>
+                            <div class="gi-checklist-category-header"><?php echo esc_html($cat_info['label']); ?></div>
                             <div class="gi-checklist-items">
                                 <?php foreach ($items as $item): ?>
                                 <div class="gi-checklist-item" data-id="<?php echo esc_attr($item['id']); ?>" data-required="<?php echo $item['required'] ? 'true' : 'false'; ?>">
@@ -1122,16 +1122,7 @@ wp_head();
                                     <td class="gi-compare-current"><span class="gi-compare-value <?php echo $grant['adoption_rate'] >= 50 ? 'highlight' : ''; ?>"><?php echo $grant['adoption_rate'] > 0 ? number_format($grant['adoption_rate'], 1) . '%' : '—'; ?></span></td>
                                     <?php foreach ($similar_grants as $sg): ?><td><span class="gi-compare-value <?php echo $sg['adoption_rate'] >= 50 ? 'highlight' : ''; ?>"><?php echo $sg['adoption_rate'] > 0 ? number_format($sg['adoption_rate'], 1) . '%' : '—'; ?></span></td><?php endforeach; ?>
                                 </tr>
-                                <tr>
-                                    <th>オンライン</th>
-                                    <td class="gi-compare-current"><span class="gi-compare-badge <?php echo $grant['online_application'] ? 'yes' : 'no'; ?>"><?php echo $grant['online_application'] ? '対応' : '非対応'; ?></span></td>
-                                    <?php foreach ($similar_grants as $sg): ?><td><span class="gi-compare-badge <?php echo $sg['online_application'] ? 'yes' : 'no'; ?>"><?php echo $sg['online_application'] ? '対応' : '非対応'; ?></span></td><?php endforeach; ?>
-                                </tr>
-                                <tr>
-                                    <th>jGrants</th>
-                                    <td class="gi-compare-current"><span class="gi-compare-badge <?php echo $grant['jgrants_available'] ? 'yes' : 'no'; ?>"><?php echo $grant['jgrants_available'] ? '対応' : '非対応'; ?></span></td>
-                                    <?php foreach ($similar_grants as $sg): ?><td><span class="gi-compare-badge <?php echo $sg['jgrants_available'] ? 'yes' : 'no'; ?>"><?php echo $sg['jgrants_available'] ? '対応' : '非対応'; ?></span></td><?php endforeach; ?>
-                                </tr>
+
                                 <tr>
                                     <th>準備目安</th>
                                     <td class="gi-compare-current"><span class="gi-compare-value">約<?php echo $grant['preparation_days']; ?>日</span></td>

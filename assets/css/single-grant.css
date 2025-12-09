@@ -1288,6 +1288,9 @@ ul, ol {
     flex-shrink: 0;
     overflow: hidden;
     border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .gi-supervisor-avatar img {
