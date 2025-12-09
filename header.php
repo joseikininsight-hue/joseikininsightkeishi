@@ -97,7 +97,7 @@ $header_data = ji_get_header_data();
         <a href="<?php echo esc_url(home_url('/')); ?>" class="ji-logo" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?> - ホームへ">
             <div class="ji-logo-image-wrapper">
                 <img 
-                    src="https://joseikin-insight.com/wp-content/uploads/2025/05/cropped-logo3.webp" 
+                    src="https://joseikin-insight.com/gemini_generated_image_19k6yi19k6yi19k6/" 
                     alt="<?php echo esc_attr(get_bloginfo('name')); ?>" 
                     class="ji-logo-image"
                     width="240"
