@@ -104,6 +104,14 @@ add_action('wp_ajax_gi_optimize_municipality_structure', 'gi_ajax_optimize_munic
 add_action('wp_ajax_gi_load_more_grants', 'gi_ajax_load_more_grants');
 add_action('wp_ajax_nopriv_gi_load_more_grants', 'gi_ajax_load_more_grants');
 
+// フロントエンド検索機能
+add_action('wp_ajax_gi_search_grants', 'gi_ajax_search_grants');
+add_action('wp_ajax_nopriv_gi_search_grants', 'gi_ajax_search_grants');
+
+// フロントエンド検索候補機能
+add_action('wp_ajax_gi_get_search_suggestions', 'gi_ajax_get_search_suggestions_handler');
+add_action('wp_ajax_nopriv_gi_get_search_suggestions', 'gi_ajax_get_search_suggestions_handler');
+
 /**
  * =============================================================================
  * 主要なAJAXハンドラー関数 - 完全版
@@ -5399,4 +5407,205 @@ function gi_ajax_load_more_grants() {
         'total_pages' => $query->max_num_pages,
         'total_count' => $query->found_posts
     ]);
+}
+
+/**
+ * =============================================================================
+ * フロントエンド検索機能用 AJAX ハンドラー
+ * =============================================================================
+ */
+
+/**
+ * 助成金検索処理（frontend.js用）
+ */
+function gi_ajax_search_grants() {
+    try {
+        // nonceチェック
+        if (!check_ajax_referer('gi_ajax_nonce', 'nonce', false)) {
+            wp_send_json_error([
+                'message' => 'セキュリティチェックに失敗しました',
+                'code' => 'SECURITY_ERROR'
+            ]);
+            return;
+        }
+
+        // 検索クエリの取得
+        $query = sanitize_text_field($_POST['query'] ?? '');
+        
+        if (empty($query)) {
+            wp_send_json_error([
+                'message' => '検索キーワードを入力してください',
+                'code' => 'EMPTY_QUERY'
+            ]);
+            return;
+        }
+
+        // 検索実行
+        $args = [
+            'post_type' => 'grant',
+            'posts_per_page' => 12,
+            'post_status' => 'publish',
+            's' => $query
+        ];
+
+        // メタフィールドも検索対象に追加
+        add_filter('posts_search', function($search_sql, $wp_query) use ($query) {
+            global $wpdb;
+            
+            if (!$wp_query->is_main_query() || empty($query)) {
+                return $search_sql;
+            }
+            
+            $search_term = '%' . $wpdb->esc_like($query) . '%';
+            
+            $meta_search = $wpdb->prepare("
+                OR EXISTS (
+                    SELECT 1 FROM {$wpdb->postmeta} pm 
+                    WHERE pm.post_id = {$wpdb->posts}.ID 
+                    AND pm.meta_key IN ('ai_summary', 'organization', 'grant_target', 'eligible_expenses', 'required_documents')
+                    AND pm.meta_value LIKE %s
+                )
+            ", $search_term);
+            
+            // 既存の検索SQLに追加
+            $search_sql = str_replace('))) AND', '))) ' . $meta_search . ' AND', $search_sql);
+            return $search_sql;
+        }, 10, 2);
+
+        $search_query = new WP_Query($args);
+        
+        $results = [];
+        if ($search_query->have_posts()) {
+            while ($search_query->have_posts()) {
+                $search_query->the_post();
+                $post_id = get_the_ID();
+                
+                $categories = get_the_terms($post_id, 'grant_category');
+                $prefectures = get_the_terms($post_id, 'grant_prefecture');
+                
+                $results[] = [
+                    'id' => $post_id,
+                    'title' => get_the_title(),
+                    'url' => get_permalink(),
+                    'excerpt' => get_the_excerpt(),
+                    'date' => get_the_date('Y-m-d'),
+                    'organization' => get_post_meta($post_id, 'organization', true) ?: '公的機関',
+                    'max_amount' => get_post_meta($post_id, 'max_amount', true),
+                    'deadline' => get_post_meta($post_id, 'deadline', true),
+                    'is_featured' => get_post_meta($post_id, 'is_featured', true),
+                    'categories' => $categories && !is_wp_error($categories) ? array_map(function($cat) {
+                        return ['name' => $cat->name, 'slug' => $cat->slug];
+                    }, array_slice($categories, 0, 2)) : [],
+                    'prefecture' => $prefectures && !is_wp_error($prefectures) ? $prefectures[0]->name : ''
+                ];
+            }
+            wp_reset_postdata();
+        }
+
+        wp_send_json_success([
+            'grants' => $results,
+            'total' => $search_query->found_posts,
+            'query' => $query
+        ]);
+
+    } catch (Exception $e) {
+        wp_send_json_error([
+            'message' => '検索中にエラーが発生しました: ' . $e->getMessage(),
+            'code' => 'EXCEPTION'
+        ]);
+    }
+}
+
+/**
+ * 検索候補取得処理（frontend.js用）
+ */
+function gi_ajax_get_search_suggestions_handler() {
+    try {
+        // nonceチェック
+        if (!check_ajax_referer('gi_ajax_nonce', 'nonce', false)) {
+            wp_send_json_error([
+                'message' => 'セキュリティチェックに失敗しました',
+                'code' => 'SECURITY_ERROR'
+            ]);
+            return;
+        }
+
+        // 検索クエリの取得
+        $query = sanitize_text_field($_POST['query'] ?? '');
+        
+        if (empty($query) || mb_strlen($query) < 2) {
+            wp_send_json_success([
+                'suggestions' => []
+            ]);
+            return;
+        }
+
+        $suggestions = [];
+
+        // 1. 助成金タイトルから候補を取得
+        $args = [
+            'post_type' => 'grant',
+            'posts_per_page' => 5,
+            'post_status' => 'publish',
+            's' => $query,
+            'orderby' => 'relevance',
+            'fields' => 'ids'
+        ];
+
+        $post_ids = get_posts($args);
+        
+        foreach ($post_ids as $post_id) {
+            $suggestions[] = [
+                'type' => 'grant',
+                'text' => get_the_title($post_id),
+                'url' => get_permalink($post_id)
+            ];
+        }
+
+        // 2. タグから候補を取得
+        $tags = get_terms([
+            'taxonomy' => 'grant_tag',
+            'search' => $query,
+            'number' => 3,
+            'hide_empty' => true
+        ]);
+
+        if (!is_wp_error($tags)) {
+            foreach ($tags as $tag) {
+                $suggestions[] = [
+                    'type' => 'tag',
+                    'text' => $tag->name,
+                    'url' => get_term_link($tag)
+                ];
+            }
+        }
+
+        // 3. カテゴリから候補を取得
+        $categories = get_terms([
+            'taxonomy' => 'grant_category',
+            'search' => $query,
+            'number' => 2,
+            'hide_empty' => true
+        ]);
+
+        if (!is_wp_error($categories)) {
+            foreach ($categories as $category) {
+                $suggestions[] = [
+                    'type' => 'category',
+                    'text' => $category->name,
+                    'url' => get_term_link($category)
+                ];
+            }
+        }
+
+        wp_send_json_success([
+            'suggestions' => array_slice($suggestions, 0, 10)
+        ]);
+
+    } catch (Exception $e) {
+        wp_send_json_error([
+            'message' => '候補取得中にエラーが発生しました: ' . $e->getMessage(),
+            'code' => 'EXCEPTION'
+        ]);
+    }
 }
