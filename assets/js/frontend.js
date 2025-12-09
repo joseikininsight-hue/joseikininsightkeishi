@@ -1526,17 +1526,27 @@ const GrantInsight = {
             if (!link) return;
 
             const targetId = link.getAttribute('href');
-            const target = document.querySelector(targetId);
             
-            if (target) {
-                e.preventDefault();
-                const headerOffset = this.state.headerHeight || 80;
-                const targetPosition = target.offsetTop - headerOffset;
+            // 空のハッシュ（#のみ）や無効なセレクタをスキップ
+            if (!targetId || targetId === '#' || targetId.length <= 1) {
+                return;
+            }
+            
+            try {
+                const target = document.querySelector(targetId);
                 
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
+                if (target) {
+                    e.preventDefault();
+                    const headerOffset = this.state.headerHeight || 80;
+                    const targetPosition = target.offsetTop - headerOffset;
+                    
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            } catch (error) {
+                console.warn('[Grant Insight] Invalid selector:', targetId, error);
             }
         });
     },
