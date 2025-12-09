@@ -324,34 +324,70 @@ add_action('template_redirect', 'gi_handle_old_slug_redirect', 1);
 function gi_get_grants_needing_slug_conversion($limit = -1) {
     global $wpdb;
     
+    // メモリ制限を緩和
+    @ini_set('memory_limit', '768M');
+    
     $prefix = GI_SLUG_PREFIX;
     
-    // シンプルなLIKE検索で除外（REGEXPより軽い）
-    // grant- で始まり、その後が数字のみのものを除外
-    $query = "SELECT ID, post_name, post_title 
+    // 最小限のカラムのみ取得（メモリ節約）
+    $query = "SELECT ID, post_name 
          FROM {$wpdb->posts} 
          WHERE post_type = 'grant' 
          AND post_status = 'publish'
-         AND post_name NOT LIKE 'grant-%%'
+         AND (post_name NOT LIKE 'grant-%%' 
+              OR post_name LIKE 'grant-%%-%'
+              OR post_name LIKE 'grant-%a%'
+              OR post_name LIKE 'grant-%b%'
+              OR post_name LIKE 'grant-%c%'
+              OR post_name LIKE 'grant-%d%'
+              OR post_name LIKE 'grant-%e%'
+              OR post_name LIKE 'grant-%f%'
+              OR post_name LIKE 'grant-%g%'
+              OR post_name LIKE 'grant-%h%'
+              OR post_name LIKE 'grant-%i%'
+              OR post_name LIKE 'grant-%j%'
+              OR post_name LIKE 'grant-%k%'
+              OR post_name LIKE 'grant-%l%'
+              OR post_name LIKE 'grant-%m%'
+              OR post_name LIKE 'grant-%n%'
+              OR post_name LIKE 'grant-%o%'
+              OR post_name LIKE 'grant-%p%'
+              OR post_name LIKE 'grant-%q%'
+              OR post_name LIKE 'grant-%r%'
+              OR post_name LIKE 'grant-%s%'
+              OR post_name LIKE 'grant-%t%'
+              OR post_name LIKE 'grant-%u%'
+              OR post_name LIKE 'grant-%v%'
+              OR post_name LIKE 'grant-%w%'
+              OR post_name LIKE 'grant-%x%'
+              OR post_name LIKE 'grant-%y%'
+              OR post_name LIKE 'grant-%z%')
          ORDER BY ID ASC";
     
     if ($limit > 0) {
-        $query .= $wpdb->prepare(" LIMIT %d", $limit);
+        $query .= $wpdb->prepare(" LIMIT %d", intval($limit * 2)); // 余裕を持って取得
     }
     
-    $results = $wpdb->get_results($query);
+    $results = $wpdb->get_results($query, ARRAY_A); // 配列で取得（メモリ効率化）
     
-    // PHPで追加フィルタリング（grant-XXXだが数字以外を含むものは対象）
+    if (empty($results)) {
+        return array();
+    }
+    
+    // PHPで追加フィルタリング（grant-{数字のみ}を除外）
     $filtered = array();
-    foreach ($results as $post) {
+    foreach ($results as $row) {
         // grant-{数字のみ} の形式でなければ変換対象
-        if (!preg_match('/^grant-\d+$/', $post->post_name)) {
-            $filtered[] = $post;
+        if (!preg_match('/^grant-\d+$/', $row['post_name'])) {
+            $filtered[] = (object)$row; // 互換性のためobjectに変換
         }
         if ($limit > 0 && count($filtered) >= $limit) {
             break;
         }
     }
+    
+    // 不要な変数をクリア
+    unset($results);
     
     return $filtered;
 }
@@ -362,7 +398,7 @@ function gi_get_grants_needing_slug_conversion($limit = -1) {
  * @return int 件数
  */
 function gi_count_grants_needing_conversion() {
-    // トランジェントキャッシュを使用（5分間）
+    // トランジェントキャッシュを使用（10分間）
     $cache_key = 'gi_grants_need_conversion_count';
     $cached = get_transient($cache_key);
     
@@ -372,22 +408,32 @@ function gi_count_grants_needing_conversion() {
     
     global $wpdb;
     
-    // まず全件取得してPHPでカウント（REGEXP避け）
-    $all_grants = $wpdb->get_results(
-        "SELECT post_name FROM {$wpdb->posts} 
+    // メモリ制限を緩和
+    @ini_set('memory_limit', '768M');
+    
+    // 全体数を取得
+    $total = $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$wpdb->posts} 
          WHERE post_type = 'grant' 
          AND post_status = 'publish'"
     );
     
-    $count = 0;
-    foreach ($all_grants as $grant) {
-        if (!preg_match('/^grant-\d+$/', $grant->post_name)) {
-            $count++;
-        }
-    }
+    // IDベースのスラッグの数を取得（grant-数字のみ）
+    // MySQLの文字列操作で効率的にカウント
+    $id_based = $wpdb->get_var(
+        "SELECT COUNT(*) FROM {$wpdb->posts} 
+         WHERE post_type = 'grant' 
+         AND post_status = 'publish'
+         AND post_name LIKE 'grant-%'
+         AND post_name NOT LIKE 'grant-%%-%'
+         AND CAST(SUBSTRING(post_name, 7) AS UNSIGNED) > 0
+         AND CONCAT('grant-', CAST(SUBSTRING(post_name, 7) AS UNSIGNED)) = post_name"
+    );
     
-    // キャッシュに保存（5分）
-    set_transient($cache_key, $count, 5 * MINUTE_IN_SECONDS);
+    $count = max(0, $total - $id_based);
+    
+    // キャッシュに保存（10分）
+    set_transient($cache_key, $count, 10 * MINUTE_IN_SECONDS);
     
     return $count;
 }
@@ -486,8 +532,11 @@ function gi_convert_single_grant_slug($post_id) {
  * @return array 結果
  */
 function gi_bulk_convert_grant_slugs($batch_size = 20) {
-    // メモリ制限を緩和
-    @ini_set('memory_limit', '512M');
+    // メモリ制限を大幅に緩和
+    @ini_set('memory_limit', '768M');
+    
+    // 最大実行時間を延長
+    @set_time_limit(300);
     
     $results = array(
         'processed' => 0,
@@ -516,9 +565,10 @@ function gi_bulk_convert_grant_slugs($batch_size = 20) {
             $memory_limit = ini_get('memory_limit');
             $memory_limit_bytes = wp_convert_hr_to_bytes($memory_limit);
             
-            // メモリが80%以上使用されていたら中断
-            if ($memory_usage > $memory_limit_bytes * 0.8) {
-                $results['error'] = 'メモリ制限に近づいたため中断しました';
+            // メモリが85%以上使用されていたら中断
+            if ($memory_usage > $memory_limit_bytes * 0.85) {
+                $results['error'] = 'メモリ制限に近づいたため中断しました (使用: ' . round($memory_usage / 1048576, 2) . 'MB / ' . $memory_limit . ')';
+                error_log('[Slug Optimizer] Memory limit reached: ' . round($memory_usage / 1048576, 2) . 'MB');
                 break;
             }
             
@@ -884,8 +934,10 @@ function gi_slug_optimizer_admin_page() {
             skipped: 0,
             failed: 0,
             retryCount: 0,
-            maxRetries: 5,
-            batchSize: 10, // 10件ずつ処理（サーバー負荷軽減）
+            maxRetries: 3, // リトライ回数を削減（無限ループ防止）
+            consecutiveErrors: 0,
+            maxConsecutiveErrors: 3, // 連続エラーで停止
+            batchSize: 5, // バッチサイズを削減（メモリ節約）
             startTime: null,
             nonce: $('#gi_bulk_convert_nonce').val()
         };
@@ -978,6 +1030,7 @@ function gi_slug_optimizer_admin_page() {
                 timeout: 60000, // 60秒タイムアウト
                 success: function(response) {
                     state.retryCount = 0; // 成功したらリトライカウントをリセット
+                    state.consecutiveErrors = 0; // 連続エラーカウントもリセット
                     
                     if (response.success) {
                         var data = response.data;
@@ -1010,7 +1063,7 @@ function gi_slug_optimizer_admin_page() {
                         var remaining = data.remaining || 0;
                         if (remaining > 0) {
                             addLog('info', '残り ' + remaining + ' 件。次のバッチを開始...');
-                            setTimeout(runBatch, 500); // 少し長めの間隔
+                            setTimeout(runBatch, 2000); // サーバー負荷軽減のため間隔を延長
                         } else {
                             finishConversion(true, '全ての変換が完了しました！ (成功: ' + state.success + ', スキップ: ' + state.skipped + ', 失敗: ' + state.failed + ')');
                         }
@@ -1042,23 +1095,37 @@ function gi_slug_optimizer_admin_page() {
             addLog('error', errorMsg);
             
             state.retryCount++;
+            state.consecutiveErrors++;
+            
+            // HTTP 500エラーまたは連続エラーが多い場合は即座に停止
+            if (errorMsg.includes('HTTP 500') || state.consecutiveErrors >= state.maxConsecutiveErrors) {
+                addLog('error', '致命的なエラーが発生しました。処理を中断します。');
+                addLog('error', 'サーバーのメモリ不足またはデータベースエラーの可能性があります。');
+                addLog('info', 'バッチサイズを減らすか、管理者に連絡してください。');
+                
+                if (state.processed > 0) {
+                    finishConversion(false, '処理中断: ' + state.processed + '件処理済み。ページをリロードして続きを実行してください。（エラー: ' + errorMsg + '）');
+                } else {
+                    finishConversion(false, 'エラーが発生しました: ' + errorMsg + '\n\nサーバーのメモリ不足の可能性があります。管理者に連絡してください。');
+                }
+                return;
+            }
             
             if (state.retryCount <= state.maxRetries) {
-                var waitTime = state.retryCount * 3000; // リトライごとに待機時間を増やす（3秒ずつ）
+                var waitTime = state.retryCount * 5000; // リトライ間隔を延長（5秒ずつ）
                 addLog('warning', state.retryCount + '回目のリトライを ' + (waitTime/1000) + '秒後に実行...');
                 
                 setTimeout(function() {
-                    // まず直接リトライを試みる
-                    if (state.retryCount <= 2) {
+                    if (state.retryCount <= 1) {
                         addLog('info', '直接リトライを試行...');
                         runBatch();
                     } else {
-                        // 3回目以降はnonce再取得を試みる
+                        // 2回目以降はnonce再取得
                         refreshNonceAndRetry();
                     }
                 }, waitTime);
             } else {
-                // 最大リトライ超えても処理済み件数があれば成功扱い
+                // 最大リトライ超過
                 if (state.processed > 0) {
                     addLog('warning', '一部処理完了。残りはページリロード後に再開してください。');
                     finishConversion(false, '一部処理完了: ' + state.processed + '件処理済み。ページをリロードして続きを実行してください。');
@@ -1208,9 +1275,9 @@ function gi_ajax_bulk_convert_slugs() {
             return;
         }
         
-        // バッチサイズを取得（デフォルト10件 - より安全に）
-        $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 10;
-        $batch_size = min(max($batch_size, 5), 30); // 5〜30件の範囲
+        // バッチサイズを取得（デフォルト5件 - メモリ安全性優先）
+        $batch_size = isset($_POST['batch_size']) ? intval($_POST['batch_size']) : 5;
+        $batch_size = min(max($batch_size, 3), 10); // 3〜10件の範囲（大幅に削減）
         
         // バッチ処理を実行
         $results = gi_bulk_convert_grant_slugs($batch_size);
