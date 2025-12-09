@@ -584,7 +584,7 @@ function gi_bulk_convert_grant_slugs($batch_size = 20) {
                     if (count($results['details']) < 10) {
                         $results['details'][] = array(
                             'post_id' => $grant->ID,
-                            'title' => mb_substr($grant->post_title, 0, 30),
+                            'title' => mb_substr(get_the_title($grant->ID), 0, 30),
                             'old_slug' => mb_substr($result['old_slug'] ?? $grant->post_name, 0, 30),
                             'new_slug' => $result['new_slug'] ?? GI_SLUG_PREFIX . $grant->ID
                         );
@@ -595,7 +595,7 @@ function gi_bulk_convert_grant_slugs($batch_size = 20) {
                 if (count($results['details']) < 10) {
                     $results['details'][] = array(
                         'post_id' => $grant->ID,
-                        'title' => mb_substr($grant->post_title, 0, 30),
+                        'title' => mb_substr(get_the_title($grant->ID), 0, 30),
                         'error' => $result['message']
                     );
                 }
@@ -804,7 +804,7 @@ function gi_slug_optimizer_admin_page() {
                     <?php foreach ($preview_posts as $post): ?>
                     <tr>
                         <td><?php echo $post->ID; ?></td>
-                        <td><?php echo esc_html(mb_substr($post->post_title, 0, 40)); ?>...</td>
+                        <td><?php echo esc_html(mb_substr(get_the_title($post->ID), 0, 40)); ?>...</td>
                         <td>
                             <code style="font-size: 11px; background: #fff3cd; padding: 2px 6px; display: inline-block; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
                                 <?php echo esc_html(urldecode($post->post_name)); ?>
