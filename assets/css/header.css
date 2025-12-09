@@ -90,8 +90,16 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
         /* ===============================================
            HEADER PLACEHOLDER
            =============================================== */
-        .ji-header-placeholder { height: var(--header-height); }
-        @media (min-width: 768px) { .ji-header-placeholder { height: 72px; } }
+        .ji-header-placeholder { 
+            height: 0; 
+            display: none; 
+        }
+        @media (min-width: 768px) { 
+            .ji-header-placeholder { 
+                height: 0; 
+                display: none; 
+            } 
+        }
         
         /* ===============================================
            MAIN HEADER
