@@ -330,42 +330,16 @@ function gi_get_grants_needing_slug_conversion($limit = -1) {
     $prefix = GI_SLUG_PREFIX;
     
     // 最小限のカラムのみ取得（メモリ節約）
+    // grant-で始まらないもの、またはgrant-数字の形式でないものを取得
     $query = "SELECT ID, post_name 
          FROM {$wpdb->posts} 
          WHERE post_type = 'grant' 
          AND post_status = 'publish'
-         AND (post_name NOT LIKE 'grant-%%' 
-              OR post_name LIKE 'grant-%%-%'
-              OR post_name LIKE 'grant-%a%'
-              OR post_name LIKE 'grant-%b%'
-              OR post_name LIKE 'grant-%c%'
-              OR post_name LIKE 'grant-%d%'
-              OR post_name LIKE 'grant-%e%'
-              OR post_name LIKE 'grant-%f%'
-              OR post_name LIKE 'grant-%g%'
-              OR post_name LIKE 'grant-%h%'
-              OR post_name LIKE 'grant-%i%'
-              OR post_name LIKE 'grant-%j%'
-              OR post_name LIKE 'grant-%k%'
-              OR post_name LIKE 'grant-%l%'
-              OR post_name LIKE 'grant-%m%'
-              OR post_name LIKE 'grant-%n%'
-              OR post_name LIKE 'grant-%o%'
-              OR post_name LIKE 'grant-%p%'
-              OR post_name LIKE 'grant-%q%'
-              OR post_name LIKE 'grant-%r%'
-              OR post_name LIKE 'grant-%s%'
-              OR post_name LIKE 'grant-%t%'
-              OR post_name LIKE 'grant-%u%'
-              OR post_name LIKE 'grant-%v%'
-              OR post_name LIKE 'grant-%w%'
-              OR post_name LIKE 'grant-%x%'
-              OR post_name LIKE 'grant-%y%'
-              OR post_name LIKE 'grant-%z%')
+         AND post_name NOT REGEXP '^grant-[0-9]+$'
          ORDER BY ID ASC";
     
     if ($limit > 0) {
-        $query .= $wpdb->prepare(" LIMIT %d", intval($limit * 2)); // 余裕を持って取得
+        $query .= $wpdb->prepare(" LIMIT %d", intval($limit));
     }
     
     $results = $wpdb->get_results($query, ARRAY_A); // 配列で取得（メモリ効率化）
@@ -374,22 +348,13 @@ function gi_get_grants_needing_slug_conversion($limit = -1) {
         return array();
     }
     
-    // PHPで追加フィルタリング（grant-{数字のみ}を除外）
-    $filtered = array();
+    // objectに変換して返す（互換性のため）
+    $objects = array();
     foreach ($results as $row) {
-        // grant-{数字のみ} の形式でなければ変換対象
-        if (!preg_match('/^grant-\d+$/', $row['post_name'])) {
-            $filtered[] = (object)$row; // 互換性のためobjectに変換
-        }
-        if ($limit > 0 && count($filtered) >= $limit) {
-            break;
-        }
+        $objects[] = (object)$row;
     }
     
-    // 不要な変数をクリア
-    unset($results);
-    
-    return $filtered;
+    return $objects;
 }
 
 /**
@@ -419,15 +384,12 @@ function gi_count_grants_needing_conversion() {
     );
     
     // IDベースのスラッグの数を取得（grant-数字のみ）
-    // MySQLの文字列操作で効率的にカウント
+    // REGEXPで正確にカウント
     $id_based = $wpdb->get_var(
         "SELECT COUNT(*) FROM {$wpdb->posts} 
          WHERE post_type = 'grant' 
          AND post_status = 'publish'
-         AND post_name LIKE 'grant-%'
-         AND post_name NOT LIKE 'grant-%%-%'
-         AND CAST(SUBSTRING(post_name, 7) AS UNSIGNED) > 0
-         AND CONCAT('grant-', CAST(SUBSTRING(post_name, 7) AS UNSIGNED)) = post_name"
+         AND post_name REGEXP '^grant-[0-9]+$'"
     );
     
     $count = max(0, $total - $id_based);
@@ -584,7 +546,7 @@ function gi_bulk_convert_grant_slugs($batch_size = 20) {
                     if (count($results['details']) < 10) {
                         $results['details'][] = array(
                             'post_id' => $grant->ID,
-                            'title' => mb_substr($grant->post_title, 0, 30),
+                            'title' => mb_substr(get_the_title($grant->ID), 0, 30),
                             'old_slug' => mb_substr($result['old_slug'] ?? $grant->post_name, 0, 30),
                             'new_slug' => $result['new_slug'] ?? GI_SLUG_PREFIX . $grant->ID
                         );
@@ -595,7 +557,7 @@ function gi_bulk_convert_grant_slugs($batch_size = 20) {
                 if (count($results['details']) < 10) {
                     $results['details'][] = array(
                         'post_id' => $grant->ID,
-                        'title' => mb_substr($grant->post_title, 0, 30),
+                        'title' => mb_substr(get_the_title($grant->ID), 0, 30),
                         'error' => $result['message']
                     );
                 }
@@ -804,7 +766,7 @@ function gi_slug_optimizer_admin_page() {
                     <?php foreach ($preview_posts as $post): ?>
                     <tr>
                         <td><?php echo $post->ID; ?></td>
-                        <td><?php echo esc_html(mb_substr($post->post_title, 0, 40)); ?>...</td>
+                        <td><?php echo esc_html(mb_substr(get_the_title($post->ID), 0, 40)); ?>...</td>
                         <td>
                             <code style="font-size: 11px; background: #fff3cd; padding: 2px 6px; display: inline-block; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
                                 <?php echo esc_html(urldecode($post->post_name)); ?>
