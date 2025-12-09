@@ -1,11 +1,12 @@
 (function() {
     'use strict';
     
-    const CONFIG = {
-        ajaxUrl: '<?php echo esc_js(admin_url('admin-ajax.php')); ?>',
-        nonce: '<?php echo esc_js($ajax_nonce); ?>',
-        grantsUrl: '<?php echo esc_js(home_url('/grants/')); ?>',
-        municipalityUrl: '<?php echo esc_js(home_url('/grant_municipality/')); ?>'
+    // Get configuration from localized script (set by WordPress)
+    const CONFIG = window.giSearchConfig || {
+        ajaxUrl: '/wp-admin/admin-ajax.php',
+        nonce: '',
+        grantsUrl: '/grants/',
+        municipalityUrl: '/grant_municipality/'
     };
     
     const $ = (sel) => document.querySelector(sel);
@@ -159,11 +160,13 @@
         btn.addEventListener('click', function() {
             const isHidden = content.hidden;
             content.hidden = !isHidden;
-            this.setAttribute('aria-expanded', isHidden);
+            this.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
             
             const span = this.querySelector('span');
             if (span) {
-                span.textContent = isHidden ? '閉じる' : 'すべて見る';
+                // Determine the correct label based on the button ID
+                const openLabel = btnId.includes('categories') ? 'すべてのカテゴリを見る' : 'すべてのタグを見る';
+                span.textContent = isHidden ? '閉じる' : openLabel;
             }
         });
     }

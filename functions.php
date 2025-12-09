@@ -575,6 +575,14 @@ function gi_enqueue_external_assets() {
                 filemtime($template_dir . '/assets/js/section-search.js'),
                 true
             );
+            
+            // Localize script with AJAX configuration
+            wp_localize_script('gi-section-search-js', 'giSearchConfig', array(
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce' => wp_create_nonce('gi_ajax_nonce'),
+                'grantsUrl' => home_url('/grants/'),
+                'municipalityUrl' => home_url('/grant_municipality/')
+            ));
         }
         
         if (file_exists($template_dir . '/assets/js/grant-tabs.js')) {
