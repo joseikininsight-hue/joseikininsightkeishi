@@ -682,7 +682,7 @@ if (!function_exists('gi_get_cached_stats')) {
         <div class="ji-schema-data" itemscope itemtype="https://schema.org/Organization">
             <meta itemprop="name" content="<?php bloginfo('name'); ?>">
             <meta itemprop="url" content="<?php echo esc_url(home_url('/')); ?>">
-            <meta itemprop="logo" content="https://joseikin-insight.com/wp-content/uploads/2025/05/cropped-logo3.webp">
+            <meta itemprop="logo" content="https://joseikin-insight.com/gemini_generated_image_19k6yi19k6yi19k6/">
             <meta itemprop="description" content="日本全国の補助金・助成金情報を網羅した検索プラットフォーム。専門家監修のもと、最新情報を毎日更新しています。">
             <?php 
             $sns_urls = gi_get_sns_urls();
@@ -781,7 +781,7 @@ if (!function_exists('gi_get_cached_stats')) {
                     <!-- Brand Column -->
                     <div class="ji-nav-brand">
                         <a href="<?php echo esc_url(home_url('/')); ?>" class="ji-brand-logo" aria-label="<?php bloginfo('name'); ?> ホームへ">
-                            <img src="https://joseikin-insight.com/wp-content/uploads/2025/05/cropped-logo3.webp" alt="Joseikin Insight" width="180" height="32" class="ji-logo-image">
+                            <img src="https://joseikin-insight.com/gemini_generated_image_19k6yi19k6yi19k6/" alt="Joseikin Insight" width="180" height="32" class="ji-logo-image">
                         </a>
                         
                         <p class="ji-brand-description">
@@ -928,7 +928,7 @@ if (!function_exists('gi_get_cached_stats')) {
         '@type' => 'Organization',
         'name' => get_bloginfo('name'),
         'url' => home_url('/'),
-        'logo' => 'https://joseikin-insight.com/wp-content/uploads/2025/05/cropped-logo3.webp',
+        'logo' => 'https://joseikin-insight.com/gemini_generated_image_19k6yi19k6yi19k6/',
         'description' => '日本全国の補助金・助成金情報を網羅した検索プラットフォーム。専門家監修のもと、最新情報を毎日更新しています。',
         'foundingDate' => '2024',
         'areaServed' => array(
