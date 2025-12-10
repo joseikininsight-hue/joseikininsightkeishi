@@ -85,14 +85,15 @@ if (get_query_var('hide_sticky_cta')) return;
 
 /* Wrapper */
 .ui-sticky-cta {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    z-index: var(--cta-z-index);
-    background: var(--cta-bg-light);
-    border-top: 3px solid var(--cta-gov-gold);
-    box-shadow: 0 -8px 32px rgba(13, 42, 82, 0.15);
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    z-index: var(--cta-z-index) !important;
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    border-top: 3px solid #C5A059 !important;
+    box-shadow: 0 -8px 32px rgba(13, 42, 82, 0.15) !important;
     padding-bottom: env(safe-area-inset-bottom);
     transform: translateY(0);
     transition: transform 0.4s var(--cta-trans);
@@ -154,9 +155,10 @@ if (get_query_var('hide_sticky_cta')) return;
 /* --- Diagnosis Button (Secondary) --- */
 .ui-btn-diagnosis {
     flex: 0 0 38%;
-    background: var(--cta-bg-light);
-    color: var(--cta-text-main);
-    border-right: 1px solid var(--cta-border);
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    color: #0D2A52 !important;
+    border-right: 1px solid #E2E8F0 !important;
 }
 
 .ui-btn-diagnosis:hover {
@@ -184,8 +186,8 @@ if (get_query_var('hide_sticky_cta')) return;
 /* --- Search Button (Primary / Navy / Focus) --- */
 .ui-btn-search {
     flex: 1;
-    background: linear-gradient(135deg, var(--cta-gov-navy) 0%, var(--cta-gov-navy-light) 100%);
-    color: var(--cta-text-inverse);
+    background: linear-gradient(135deg, #0D2A52 0%, #1A3D6E 100%) !important;
+    color: #FFFFFF !important;
 }
 
 .ui-btn-search:hover {

@@ -78,7 +78,7 @@ ul, ol { list-style: none; }
 .gic-badge-intermediate { background: var(--gic-warning); color: var(--gic-white); }
 .gic-badge-advanced { background: var(--gic-error); color: var(--gic-white); }
 .gic-badge-featured { background: var(--gic-accent); color: var(--gic-black); }
-.gic-badge-new { background: var(--gic-info); color: var(--gic-white); }
+.gic-badge-recent { background: #0D2A52; color: #FFFFFF; }
 .gic-badge-updated { background: var(--gic-success-light); color: var(--gic-success-text); border: 1px solid var(--gic-success); }
 .gic-badge-fresh { background: var(--gic-success-light); color: var(--gic-success-text); }
 .gic-badge-old { background: var(--gic-warning-light); color: var(--gic-warning); }

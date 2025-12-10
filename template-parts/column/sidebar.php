@@ -179,8 +179,8 @@ $new_grants = new WP_Query(array(
                                     $days_ago = floor((time() - get_the_time('U')) / DAY_IN_SECONDS);
                                     if ($days_ago <= 7):
                                     ?>
-                                        <span class="bg-accent text-gray-900 px-2 py-0.5 rounded text-xs font-medium">
-                                            NEW
+                                        <span class="bg-gov-navy text-white px-2 py-0.5 rounded text-xs font-medium">
+                                            新着
                                         </span>
                                     <?php endif; ?>
                                 </div>

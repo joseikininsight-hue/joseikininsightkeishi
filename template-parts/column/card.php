@@ -47,7 +47,7 @@ if (empty($excerpt)) {
                 
                 <!-- バッジ -->
                 <?php if ($is_new) : ?>
-                <span class="badge badge-new">NEW</span>
+                <span class="badge badge-recent">新着</span>
                 <?php endif; ?>
             </div>
             <?php endif; ?>
@@ -175,9 +175,9 @@ if (empty($excerpt)) {
     line-height: 1;
 }
 
-.badge-new {
-    background: #2196f3;
-    color: #ffffff;
+.badge-recent {
+    background: #0D2A52;
+    color: #FFFFFF;
 }
 
 /* 右側：テキスト */

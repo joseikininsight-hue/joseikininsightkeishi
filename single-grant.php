@@ -661,7 +661,7 @@ wp_head();
                 <span class="gi-badge gi-badge-<?php echo esc_attr($deadline_status); ?>">残り<?php echo $days_remaining; ?>日</span>
                 <?php endif; ?>
                 <?php if ($grant['is_featured']): ?><span class="gi-badge gi-badge-featured">注目</span><?php endif; ?>
-                <?php if ($grant['is_new']): ?><span class="gi-badge gi-badge-new">NEW</span><?php endif; ?>
+                <?php if ($grant['is_new']): ?><span class="gi-badge gi-badge-recent">新着</span><?php endif; ?>
             </div>
             <h1 class="gi-hero-title"><?php the_title(); ?></h1>
             <div class="gi-hero-meta">
