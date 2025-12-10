@@ -56,7 +56,7 @@ $header_data = ji_get_header_data();
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     
     <meta name="format-detection" content="telephone=no, email=no, address=no">
-    <meta name="theme-color" content="#000000">
+    <meta name="theme-color" content="#0D2A52">
     <meta name="apple-mobile-web-app-capable" content="yes">
     
     <!-- Preconnect to external domains -->
@@ -92,6 +92,39 @@ $header_data = ji_get_header_data();
 
 <!-- Main Header -->
 <header id="ji-header" class="ji-header" role="banner">
+    <!-- Utility Bar (官公庁風 - PCのみ表示) -->
+    <div class="ji-utility-bar">
+        <div class="ji-utility-inner">
+            <div class="ji-utility-left">
+                <span class="ji-utility-date">
+                    <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                    <time datetime="<?php echo date('Y-m-d'); ?>"><?php echo date_i18n('Y年n月j日（D）'); ?></time>
+                </span>
+                <span class="ji-utility-update">
+                    <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                    最終更新: <?php echo esc_html(date_i18n('Y年n月j日', strtotime(get_option('ji_last_data_update', current_time('Y-m-d'))))); ?>
+                </span>
+            </div>
+            <div class="ji-utility-right">
+                <a href="<?php echo esc_url(home_url('/sitemap/')); ?>" class="ji-utility-link">
+                    <i class="fas fa-sitemap" aria-hidden="true"></i>
+                    サイトマップ
+                </a>
+                <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="ji-utility-link">
+                    <i class="fas fa-envelope" aria-hidden="true"></i>
+                    お問い合わせ
+                </a>
+                <div class="ji-font-size-controls">
+                    <span class="ji-font-size-label">文字サイズ</span>
+                    <button type="button" class="ji-font-size-btn" data-size="small" aria-label="文字サイズ小">小</button>
+                    <button type="button" class="ji-font-size-btn active" data-size="normal" aria-label="文字サイズ中">中</button>
+                    <button type="button" class="ji-font-size-btn" data-size="large" aria-label="文字サイズ大">大</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ji-header-main">
     <div class="ji-header-inner">
         <!-- Logo -->
         <a href="<?php echo esc_url(home_url('/')); ?>" class="ji-logo" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?> - ホームへ">
@@ -246,6 +279,7 @@ $header_data = ji_get_header_data();
                 </span>
             </button>
         </div>
+    </div>
     </div>
     
     <!-- Search Panel -->
@@ -704,6 +738,44 @@ $header_data = ji_get_header_data();
     
     handleScroll();
     
-    console.log('[✓] Joseikin Insight Header v10.0.0 - Click Menu Edition');
+    // 文字サイズ変更機能（官公庁サイト風）
+    function initFontSizeControls() {
+        const fontBtns = document.querySelectorAll('.ji-font-size-btn');
+        
+        // 保存された設定を復元
+        const savedSize = localStorage.getItem('ji-font-size') || 'normal';
+        applyFontSize(savedSize);
+        
+        fontBtns.forEach(btn => {
+            if (btn.dataset.size === savedSize) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+            
+            btn.addEventListener('click', () => {
+                const size = btn.dataset.size;
+                applyFontSize(size);
+                
+                fontBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                localStorage.setItem('ji-font-size', size);
+            });
+        });
+    }
+    
+    function applyFontSize(size) {
+        document.documentElement.classList.remove('font-size-small', 'font-size-large');
+        if (size === 'small') {
+            document.documentElement.classList.add('font-size-small');
+        } else if (size === 'large') {
+            document.documentElement.classList.add('font-size-large');
+        }
+    }
+    
+    initFontSizeControls();
+    
+    console.log('[✓] Joseikin Insight Header v11.0.0 - Government Official Style');
 })();
 </script>

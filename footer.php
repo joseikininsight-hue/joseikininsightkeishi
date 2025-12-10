@@ -1,10 +1,10 @@
 <?php
 /**
- * JOSEIKIN INSIGHT - Ultimate Footer
- * E-E-A-T・SEO・UI・UX 最適化版
+ * JOSEIKIN INSIGHT - Government Style Footer
+ * 官公庁風デザイン - 信頼性・公共性・堅実性を演出
  * 
  * @package Joseikin_Insight_Footer
- * @version 8.0.0
+ * @version 9.0.0
  */
 
 // SNS URLヘルパー関数
@@ -75,317 +75,221 @@ if (!function_exists('gi_get_cached_stats')) {
 
     <style>
         /* ===============================================
-           JOSEIKIN INSIGHT - ULTIMATE FOOTER
-           E-E-A-T・SEO・UI・UX 最適化版 v8.0
+           JOSEIKIN INSIGHT - GOVERNMENT STYLE FOOTER
+           官公庁風デザイン v9.0
            =============================================== */
         
         :root {
-            --footer-bg: #000000;
-            --footer-bg-elevated: #0a0a0a;
-            --footer-text: #ffffff;
-            --footer-text-secondary: #a3a3a3;
-            --footer-text-tertiary: #737373;
-            --footer-border: rgba(255, 255, 255, 0.08);
-            --footer-border-strong: rgba(255, 255, 255, 0.15);
-            --footer-accent: #ffffff;
-            --footer-accent-hover: rgba(255, 255, 255, 0.9);
-            --footer-success: #22c55e;
-            --footer-font: 'Noto Sans JP', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            --footer-transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            --footer-max-width: 1200px;
+            /* Government Color Palette */
+            --gov-navy: #0D2A52;
+            --gov-navy-dark: #081C38;
+            --gov-navy-light: #1A3D6E;
+            --gov-gold: #C5A059;
+            --gov-gold-light: #D4B57A;
+            --gov-white: #FFFFFF;
+            --gov-gray-100: #F8F9FA;
+            --gov-gray-200: #E9ECEF;
+            --gov-gray-300: #DEE2E6;
+            --gov-gray-400: #CED4DA;
+            --gov-gray-500: #ADB5BD;
+            --gov-gray-600: #6C757D;
+            --gov-text-light: rgba(255, 255, 255, 0.9);
+            --gov-text-muted: rgba(255, 255, 255, 0.7);
+            --gov-border: rgba(255, 255, 255, 0.15);
+            --gov-font: 'Noto Sans JP', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --gov-transition: 0.2s ease;
+            --gov-max-width: 1200px;
+        }
+        
+        /* ===============================================
+           BACK TO TOP BUTTON
+           =============================================== */
+        .gov-back-to-top {
+            position: fixed;
+            bottom: 100px;
+            right: 24px;
+            width: 50px;
+            height: 50px;
+            background: var(--gov-navy);
+            color: var(--gov-white);
+            border: 2px solid var(--gov-gold);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all var(--gov-transition);
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .gov-back-to-top.visible {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        
+        .gov-back-to-top:hover {
+            background: var(--gov-gold);
+            color: var(--gov-navy);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+        }
+        
+        .gov-back-to-top i {
+            font-size: 1.25rem;
+        }
+        
+        @media (max-width: 767px) {
+            .gov-back-to-top {
+                bottom: 80px;
+                right: 16px;
+                width: 44px;
+                height: 44px;
+            }
         }
         
         /* ===============================================
            BASE FOOTER STYLES
            =============================================== */
-        .ji-footer {
-            background: var(--footer-bg);
-            color: var(--footer-text);
-            font-family: var(--footer-font);
+        .gov-footer {
+            background: var(--gov-navy);
+            color: var(--gov-white);
+            font-family: var(--gov-font);
             position: relative;
+            border-top: 4px solid var(--gov-gold);
         }
         
-        .ji-footer-inner {
-            max-width: var(--footer-max-width);
+        .gov-footer-inner {
+            max-width: var(--gov-max-width);
             margin: 0 auto;
             padding: 0 1.5rem;
         }
         
         @media (min-width: 768px) {
-            .ji-footer-inner {
+            .gov-footer-inner {
                 padding: 0 2rem;
             }
         }
         
-        /* Logo Styles */
-        .ji-logo-image {
-            height: 32px;
-            width: auto;
-            max-width: 200px;
-            object-fit: contain;
-            display: block;
-        }
-
-        @media (max-width: 767px) {
-            .ji-logo-image {
-                height: 28px;
-                max-width: 160px;
-            }
-        }
-
         /* ===============================================
-           TRUST SECTION - E-E-A-T強化
+           EXTERNAL LINKS SECTION - 関連リンク
            =============================================== */
-        .ji-footer-trust {
-            padding: 3rem 0;
-            border-bottom: 1px solid var(--footer-border);
+        .gov-external-links {
+            padding: 2rem 0;
+            border-bottom: 1px solid var(--gov-border);
+            background: var(--gov-navy-dark);
         }
         
-        .ji-trust-header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-        
-        .ji-trust-badge {
-            display: inline-flex;
+        .gov-external-header {
+            display: flex;
             align-items: center;
-            gap: 0.5rem;
-            background: var(--footer-success);
-            color: var(--footer-bg);
-            padding: 0.375rem 1rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            margin-bottom: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
         }
         
-        .ji-trust-badge i {
+        .gov-external-title {
             font-size: 0.875rem;
-        }
-        
-        .ji-trust-title {
-            font-size: 1.125rem;
             font-weight: 700;
-            color: var(--footer-text);
-            margin-bottom: 0.5rem;
-            letter-spacing: -0.01em;
+            color: var(--gov-white);
+            border-left: 3px solid var(--gov-gold);
+            padding-left: 0.75rem;
+            margin: 0;
         }
         
-        .ji-trust-subtitle {
-            font-size: 0.875rem;
-            color: var(--footer-text-secondary);
-            line-height: 1.6;
-        }
-        
-        /* Trust Points Grid */
-        .ji-trust-grid {
+        .gov-external-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
         }
         
         @media (min-width: 640px) {
-            .ji-trust-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .gov-external-grid {
+                grid-template-columns: repeat(3, 1fr);
             }
         }
         
         @media (min-width: 1024px) {
-            .ji-trust-grid {
-                grid-template-columns: repeat(4, 1fr);
+            .gov-external-grid {
+                grid-template-columns: repeat(6, 1fr);
             }
         }
         
-        .ji-trust-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1.25rem;
-            background: var(--footer-bg-elevated);
-            border: 1px solid var(--footer-border);
-            border-radius: 12px;
-            transition: all var(--footer-transition);
-        }
-        
-        .ji-trust-item:hover {
-            border-color: var(--footer-border-strong);
-            transform: translateY(-2px);
-        }
-        
-        .ji-trust-icon {
-            width: 40px;
-            height: 40px;
+        .gov-external-link {
             display: flex;
             align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            flex-shrink: 0;
-        }
-        
-        .ji-trust-icon i {
-            font-size: 1.125rem;
-            color: var(--footer-text);
-        }
-        
-        .ji-trust-content h4 {
-            font-size: 0.9375rem;
-            font-weight: 700;
-            color: var(--footer-text);
-            margin-bottom: 0.25rem;
-            line-height: 1.4;
-        }
-        
-        .ji-trust-content p {
-            font-size: 0.8125rem;
-            color: var(--footer-text-secondary);
-            line-height: 1.5;
-            margin: 0;
-        }
-        
-        /* ===============================================
-           CTA SECTION
-           =============================================== */
-        .ji-footer-cta {
-            padding: 3rem 0;
-            border-bottom: 1px solid var(--footer-border);
-        }
-        
-        .ji-cta-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-            align-items: center;
-            text-align: center;
-        }
-        
-        @media (min-width: 768px) {
-            .ji-cta-wrapper {
-                flex-direction: row;
-                justify-content: space-between;
-                text-align: left;
-            }
-        }
-        
-        .ji-cta-content {
-            max-width: 500px;
-        }
-        
-        .ji-cta-title {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--footer-text);
-            margin-bottom: 0.75rem;
-            letter-spacing: -0.02em;
-            line-height: 1.3;
-        }
-        
-        @media (min-width: 768px) {
-            .ji-cta-title {
-                font-size: 1.75rem;
-            }
-        }
-        
-        .ji-cta-description {
-            font-size: 0.9375rem;
-            color: var(--footer-text-secondary);
-            line-height: 1.7;
-            margin: 0;
-        }
-        
-        .ji-cta-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-            width: 100%;
-        }
-        
-        @media (min-width: 480px) {
-            .ji-cta-buttons {
-                flex-direction: row;
-                width: auto;
-            }
-        }
-        
-        .ji-cta-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
             gap: 0.5rem;
-            padding: 1rem 1.75rem;
-            border-radius: 10px;
-            font-size: 0.9375rem;
-            font-weight: 700;
+            padding: 0.625rem 0.875rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--gov-border);
+            border-radius: 6px;
+            color: var(--gov-text-light);
             text-decoration: none;
-            transition: all var(--footer-transition);
-            white-space: nowrap;
-            letter-spacing: 0.01em;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: all var(--gov-transition);
         }
         
-        .ji-cta-btn-primary {
-            background: var(--footer-text);
-            color: var(--footer-bg);
-            border: 2px solid var(--footer-text);
-        }
-        
-        .ji-cta-btn-primary:hover {
-            background: transparent;
-            color: var(--footer-text);
+        .gov-external-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--gov-gold);
+            color: var(--gov-white);
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
         }
         
-        .ji-cta-btn-secondary {
-            background: transparent;
-            color: var(--footer-text);
-            border: 2px solid var(--footer-border-strong);
+        .gov-external-link i {
+            font-size: 0.75rem;
+            color: var(--gov-gold);
         }
         
-        .ji-cta-btn-secondary:hover {
-            border-color: var(--footer-text);
-            transform: translateY(-2px);
+        .gov-external-link .fa-external-link-alt {
+            font-size: 0.625rem;
+            margin-left: auto;
+            opacity: 0.6;
         }
         
         /* ===============================================
-           MAIN NAVIGATION SECTION
+           MAIN NAVIGATION - 4カラム構成
            =============================================== */
-        .ji-footer-nav {
-            padding: 3.5rem 0;
-            border-bottom: 1px solid var(--footer-border);
+        .gov-footer-nav {
+            padding: 3rem 0;
+            border-bottom: 1px solid var(--gov-border);
         }
         
-        .ji-nav-grid {
+        .gov-nav-grid {
             display: grid;
             grid-template-columns: 1fr;
             gap: 2.5rem;
         }
         
         @media (min-width: 640px) {
-            .ji-nav-grid {
+            .gov-nav-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
         
         @media (min-width: 1024px) {
-            .ji-nav-grid {
-                grid-template-columns: 1.8fr 1fr 1fr 1fr;
+            .gov-nav-grid {
+                grid-template-columns: 1.5fr 1fr 1fr 1fr;
                 gap: 2rem;
             }
         }
         
-        /* Brand Column */
-        .ji-nav-brand {
+        /* Column 1: ロゴ・連絡先 */
+        .gov-nav-brand {
             grid-column: 1 / -1;
         }
         
         @media (min-width: 1024px) {
-            .ji-nav-brand {
+            .gov-nav-brand {
                 grid-column: auto;
             }
         }
         
-        .ji-brand-logo {
+        .gov-brand-logo {
             display: flex;
             align-items: center;
             gap: 0.75rem;
@@ -393,242 +297,318 @@ if (!function_exists('gi_get_cached_stats')) {
             text-decoration: none;
         }
         
-        .ji-brand-icon {
-            width: 44px;
-            height: 44px;
-            background: var(--footer-text);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 1.25rem;
-            color: var(--footer-bg);
-            letter-spacing: -0.02em;
-            flex-shrink: 0;
+        .gov-logo-image {
+            height: 36px;
+            width: auto;
+            max-width: 200px;
+            object-fit: contain;
+            display: block;
         }
         
-        .ji-brand-text {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
+        @media (max-width: 767px) {
+            .gov-logo-image {
+                height: 32px;
+                max-width: 180px;
+            }
         }
         
-        .ji-brand-name {
-            font-size: 1.125rem;
-            font-weight: 800;
-            color: var(--footer-text);
-            letter-spacing: 0.01em;
-            line-height: 1.2;
-        }
-        
-        .ji-brand-tagline {
-            font-size: 0.6875rem;
-            color: var(--footer-text-tertiary);
-            font-weight: 600;
-            letter-spacing: 0.05em;
-            text-transform: uppercase;
-        }
-        
-        .ji-brand-description {
+        .gov-brand-description {
             font-size: 0.875rem;
-            color: var(--footer-text-secondary);
+            color: var(--gov-text-muted);
             line-height: 1.7;
             margin-bottom: 1.5rem;
-            max-width: 300px;
+            max-width: 320px;
+        }
+        
+        .gov-contact-info {
+            margin-bottom: 1.5rem;
+        }
+        
+        .gov-contact-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--gov-text-light);
+        }
+        
+        .gov-contact-item i {
+            color: var(--gov-gold);
+            width: 16px;
+            margin-top: 0.125rem;
+        }
+        
+        .gov-contact-item a {
+            color: var(--gov-text-light);
+            text-decoration: none;
+            transition: color var(--gov-transition);
+        }
+        
+        .gov-contact-item a:hover {
+            color: var(--gov-gold);
         }
         
         /* Social Links */
-        .ji-social-row {
+        .gov-social-row {
             display: flex;
-            gap: 0.625rem;
+            gap: 0.5rem;
             flex-wrap: wrap;
         }
         
-        .ji-social-link {
-            width: 38px;
-            height: 38px;
+        .gov-social-link {
+            width: 36px;
+            height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--footer-text);
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid var(--footer-border);
-            border-radius: 10px;
+            color: var(--gov-white);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--gov-border);
+            border-radius: 6px;
             text-decoration: none;
-            font-size: 1rem;
-            transition: all var(--footer-transition);
+            font-size: 0.9375rem;
+            transition: all var(--gov-transition);
         }
         
-        .ji-social-link:hover {
-            background: var(--footer-text);
-            color: var(--footer-bg);
-            border-color: var(--footer-text);
+        .gov-social-link:hover {
+            background: var(--gov-gold);
+            color: var(--gov-navy);
+            border-color: var(--gov-gold);
             transform: translateY(-2px);
         }
         
         /* Navigation Columns */
-        .ji-nav-column {
+        .gov-nav-column {
             display: flex;
             flex-direction: column;
         }
         
-        .ji-nav-title {
-            font-size: 0.6875rem;
+        .gov-nav-title {
+            font-size: 0.9375rem;
             font-weight: 700;
-            color: var(--footer-text-tertiary);
+            color: var(--gov-white);
             margin-bottom: 1rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
+            padding-bottom: 0.5rem;
+            border-left: 3px solid var(--gov-gold);
+            padding-left: 0.75rem;
         }
         
-        .ji-nav-list {
+        .gov-nav-list {
             display: flex;
             flex-direction: column;
-            gap: 0.625rem;
+            gap: 0.5rem;
             list-style: none;
             padding: 0;
             margin: 0;
         }
         
-        .ji-nav-link {
-            color: var(--footer-text-secondary);
+        .gov-nav-link {
+            color: var(--gov-text-muted);
             text-decoration: none;
             font-size: 0.875rem;
             font-weight: 500;
-            transition: all var(--footer-transition);
+            transition: all var(--gov-transition);
             display: inline-flex;
             align-items: center;
             gap: 0.375rem;
-            padding: 0.25rem 0;
+            padding: 0.375rem 0;
         }
         
-        .ji-nav-link:hover {
-            color: var(--footer-text);
-            transform: translateX(4px);
+        .gov-nav-link:hover {
+            color: var(--gov-gold);
+            padding-left: 0.5rem;
         }
         
-        .ji-nav-link i {
+        .gov-nav-link i {
             font-size: 0.625rem;
             opacity: 0;
-            transition: opacity var(--footer-transition);
+            transition: opacity var(--gov-transition);
         }
         
-        .ji-nav-link:hover i {
+        .gov-nav-link:hover i {
             opacity: 1;
         }
         
         /* Live Badge */
-        .ji-nav-link-live {
+        .gov-nav-link-live {
             position: relative;
         }
         
-        .ji-live-dot {
+        .gov-live-dot {
             width: 6px;
             height: 6px;
-            background: var(--footer-success);
+            background: #22c55e;
             border-radius: 50%;
-            animation: pulse 2s infinite;
+            animation: gov-pulse 2s infinite;
         }
         
-        @keyframes pulse {
+        @keyframes gov-pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
         }
         
         /* ===============================================
-           BOTTOM SECTION
+           TRUST SECTION - 信頼性
            =============================================== */
-        .ji-footer-bottom {
+        .gov-footer-trust {
             padding: 2rem 0;
+            border-bottom: 1px solid var(--gov-border);
         }
         
-        .ji-bottom-wrapper {
+        .gov-trust-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        @media (min-width: 1024px) {
+            .gov-trust-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        .gov-trust-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--gov-border);
+            border-radius: 8px;
+            transition: all var(--gov-transition);
+        }
+        
+        .gov-trust-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: var(--gov-gold);
+        }
+        
+        .gov-trust-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--gov-gold);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .gov-trust-icon i {
+            font-size: 0.9375rem;
+            color: var(--gov-navy);
+        }
+        
+        .gov-trust-content h4 {
+            font-size: 0.8125rem;
+            font-weight: 700;
+            color: var(--gov-white);
+            margin-bottom: 0.125rem;
+            line-height: 1.4;
+        }
+        
+        .gov-trust-content p {
+            font-size: 0.75rem;
+            color: var(--gov-text-muted);
+            line-height: 1.4;
+            margin: 0;
+        }
+        
+        /* ===============================================
+           BOTTOM SECTION
+           =============================================== */
+        .gov-footer-bottom {
+            padding: 1.5rem 0;
+            background: var(--gov-navy-dark);
+        }
+        
+        .gov-bottom-wrapper {
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1rem;
             align-items: center;
         }
         
         @media (min-width: 768px) {
-            .ji-bottom-wrapper {
+            .gov-bottom-wrapper {
                 flex-direction: row;
                 justify-content: space-between;
             }
         }
         
         /* Left Side - Copyright & Info */
-        .ji-bottom-left {
+        .gov-bottom-left {
             display: flex;
             flex-direction: column;
-            gap: 0.75rem;
+            gap: 0.5rem;
             align-items: center;
             text-align: center;
         }
         
         @media (min-width: 768px) {
-            .ji-bottom-left {
+            .gov-bottom-left {
                 align-items: flex-start;
                 text-align: left;
             }
         }
         
-        .ji-copyright {
+        .gov-copyright {
             font-size: 0.8125rem;
-            color: var(--footer-text-tertiary);
+            color: var(--gov-text-muted);
             font-weight: 500;
         }
         
-        .ji-copyright strong {
-            color: var(--footer-text-secondary);
+        .gov-copyright strong {
+            color: var(--gov-text-light);
             font-weight: 700;
         }
         
-        .ji-update-info {
+        .gov-update-info {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             font-size: 0.75rem;
-            color: var(--footer-text-tertiary);
+            color: var(--gov-text-muted);
         }
         
-        .ji-update-dot {
+        .gov-update-dot {
             width: 6px;
             height: 6px;
-            background: var(--footer-success);
+            background: #22c55e;
             border-radius: 50%;
         }
         
         /* Right Side - Legal Links */
-        .ji-legal-links {
+        .gov-legal-links {
             display: flex;
-            gap: 1.5rem;
+            gap: 1.25rem;
             flex-wrap: wrap;
             justify-content: center;
         }
         
         @media (min-width: 768px) {
-            .ji-legal-links {
+            .gov-legal-links {
                 justify-content: flex-end;
             }
         }
         
-        .ji-legal-link {
-            color: var(--footer-text-tertiary);
+        .gov-legal-link {
+            color: var(--gov-text-muted);
             text-decoration: none;
             font-size: 0.8125rem;
-            font-weight: 600;
-            transition: color var(--footer-transition);
+            font-weight: 500;
+            transition: color var(--gov-transition);
         }
         
-        .ji-legal-link:hover {
-            color: var(--footer-text);
+        .gov-legal-link:hover {
+            color: var(--gov-gold);
         }
         
         /* ===============================================
            SCHEMA MARKUP (Hidden)
            =============================================== */
-        .ji-schema-data {
+        .gov-schema-data {
             display: none !important;
         }
         
@@ -657,14 +637,14 @@ if (!function_exists('gi_get_cached_stats')) {
             }
         }
         
-        .ji-footer a:focus-visible,
-        .ji-footer button:focus-visible {
-            outline: 2px solid var(--footer-text);
+        .gov-footer a:focus-visible,
+        .gov-footer button:focus-visible {
+            outline: 2px solid var(--gov-gold);
             outline-offset: 2px;
         }
         
         /* Skip Link for Accessibility */
-        .ji-skip-link {
+        .gov-skip-link {
             position: absolute;
             left: -9999px;
             top: auto;
@@ -673,25 +653,30 @@ if (!function_exists('gi_get_cached_stats')) {
             overflow: hidden;
         }
         
-        .ji-skip-link:focus {
+        .gov-skip-link:focus {
             position: fixed;
             top: 0;
             left: 0;
             width: auto;
             height: auto;
             padding: 1rem 2rem;
-            background: var(--footer-text);
-            color: var(--footer-bg);
+            background: var(--gov-gold);
+            color: var(--gov-navy);
             font-weight: 700;
             z-index: 9999;
         }
     </style>
 
-    <!-- Ultimate Footer -->
-    <footer class="ji-footer" role="contentinfo" itemscope itemtype="https://schema.org/WPFooter">
+    <!-- Back to Top Button -->
+    <button class="gov-back-to-top" id="backToTop" aria-label="ページの先頭へ戻る" title="ページの先頭へ戻る">
+        <i class="fas fa-chevron-up" aria-hidden="true"></i>
+    </button>
+
+    <!-- Government Style Footer -->
+    <footer class="gov-footer" role="contentinfo" itemscope itemtype="https://schema.org/WPFooter">
         
         <!-- Schema.org Organization Data -->
-        <div class="ji-schema-data" itemscope itemtype="https://schema.org/Organization">
+        <div class="gov-schema-data" itemscope itemtype="https://schema.org/Organization">
             <meta itemprop="name" content="<?php bloginfo('name'); ?>">
             <meta itemprop="url" content="<?php echo esc_url(home_url('/')); ?>">
             <meta itemprop="logo" content="https://joseikin-insight.com/gemini_generated_image_19k6yi19k6yi19k6/">
@@ -709,98 +694,75 @@ if (!function_exists('gi_get_cached_stats')) {
             </div>
         </div>
         
-        <div class="ji-footer-inner">
-            
-            <!-- Trust Section - E-E-A-T強化 -->
-            <section class="ji-footer-trust" aria-labelledby="trust-heading">
-                <div class="ji-trust-header">
-                    <div class="ji-trust-badge">
-                        <i class="fas fa-shield-alt" aria-hidden="true"></i>
-                        <span>信頼性への取り組み</span>
-                    </div>
-                    <h2 id="trust-heading" class="ji-trust-title">正確で最新の情報をお届けします</h2>
-                    <p class="ji-trust-subtitle">公的機関の公開情報を基に、専門スタッフが毎日更新・監修しています</p>
+        <!-- External Links Section - 関連リンク -->
+        <section class="gov-external-links" aria-labelledby="external-links-heading">
+            <div class="gov-footer-inner">
+                <div class="gov-external-header">
+                    <h2 id="external-links-heading" class="gov-external-title">関連リンク</h2>
                 </div>
-                
-                <div class="ji-trust-grid">
-                    <div class="ji-trust-item">
-                        <div class="ji-trust-icon">
-                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
-                        </div>
-                        <div class="ji-trust-content">
-                            <h4>毎日更新</h4>
-                            <p>公的機関の最新情報を日次で反映</p>
-                        </div>
-                    </div>
-                    
-                    <div class="ji-trust-item">
-                        <div class="ji-trust-icon">
-                            <i class="fas fa-user-check" aria-hidden="true"></i>
-                        </div>
-                        <div class="ji-trust-content">
-                            <h4>専門スタッフ監修</h4>
-                            <p>補助金申請の専門家がコンテンツを監修</p>
-                        </div>
-                    </div>
-                    
-                    <div class="ji-trust-item">
-                        <div class="ji-trust-icon">
-                            <i class="fas fa-landmark" aria-hidden="true"></i>
-                        </div>
-                        <div class="ji-trust-content">
-                            <h4>公的情報源</h4>
-                            <p>国・自治体の公式発表を情報源として使用</p>
-                        </div>
-                    </div>
-                    
-                    <div class="ji-trust-item">
-                        <div class="ji-trust-icon">
-                            <i class="fas fa-lock" aria-hidden="true"></i>
-                        </div>
-                        <div class="ji-trust-content">
-                            <h4>セキュリティ対策</h4>
-                            <p>SSL暗号化通信で安全にご利用いただけます</p>
-                        </div>
-                    </div>
+                <div class="gov-external-grid">
+                    <a href="https://www.meti.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-landmark" aria-hidden="true"></i>
+                        <span>経済産業省</span>
+                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://www.chusho.meti.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-building" aria-hidden="true"></i>
+                        <span>中小企業庁</span>
+                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://www.jgrants-portal.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-coins" aria-hidden="true"></i>
+                        <span>Jグランツ</span>
+                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://www.mirasapo-plus.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-hands-helping" aria-hidden="true"></i>
+                        <span>ミラサポplus</span>
+                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/index.html" class="gov-external-link" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-users" aria-hidden="true"></i>
+                        <span>厚生労働省</span>
+                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                    </a>
+                    <a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/ichiran.html" class="gov-external-link" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-map-marked-alt" aria-hidden="true"></i>
+                        <span>総務省</span>
+                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+                    </a>
                 </div>
-            </section>
+            </div>
+        </section>
+        
+        <div class="gov-footer-inner">
             
-            <!-- CTA Section -->
-            <section class="ji-footer-cta" aria-labelledby="cta-heading">
-                <div class="ji-cta-wrapper">
-                    <div class="ji-cta-content">
-                        <h2 id="cta-heading" class="ji-cta-title">あなたに最適な補助金・助成金を見つけませんか？</h2>
-                        <p class="ji-cta-description">簡単な質問に答えるだけで、申請可能な補助金・助成金をAIが診断します。無料でご利用いただけます。</p>
-                    </div>
+            <!-- Main Navigation - 4カラム構成 -->
+            <nav class="gov-footer-nav" aria-label="フッターナビゲーション">
+                <div class="gov-nav-grid">
                     
-                    <div class="ji-cta-buttons">
-                        <a href="<?php echo esc_url(home_url('/subsidy-diagnosis/')); ?>" class="ji-cta-btn ji-cta-btn-primary">
-                            <i class="fas fa-stethoscope" aria-hidden="true"></i>
-                            <span>無料診断を受ける</span>
-                        </a>
-                        <a href="<?php echo esc_url(get_post_type_archive_link('grant')); ?>" class="ji-cta-btn ji-cta-btn-secondary">
-                            <i class="fas fa-search" aria-hidden="true"></i>
-                            <span>補助金を探す</span>
-                        </a>
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Main Navigation -->
-            <nav class="ji-footer-nav" aria-label="フッターナビゲーション">
-                <div class="ji-nav-grid">
-                    
-                    <!-- Brand Column -->
-                    <div class="ji-nav-brand">
-                        <a href="<?php echo esc_url(home_url('/')); ?>" class="ji-brand-logo" aria-label="<?php bloginfo('name'); ?> ホームへ">
-                            <img src="https://joseikin-insight.com/gemini_generated_image_19k6yi19k6yi19k6/" alt="Joseikin Insight" width="180" height="32" class="ji-logo-image">
+                    <!-- Column 1: ロゴ・連絡先 -->
+                    <div class="gov-nav-brand">
+                        <a href="<?php echo esc_url(home_url('/')); ?>" class="gov-brand-logo" aria-label="<?php bloginfo('name'); ?> ホームへ">
+                            <img src="https://joseikin-insight.com/gemini_generated_image_19k6yi19k6yi19k6/" alt="Joseikin Insight" width="200" height="36" class="gov-logo-image">
                         </a>
                         
-                        <p class="ji-brand-description">
+                        <p class="gov-brand-description">
                             日本全国の補助金・助成金情報を一元化。あなたのビジネスや生活に最適な支援制度を見つけるお手伝いをします。
                         </p>
                         
-                        <div class="ji-social-row" aria-label="ソーシャルメディア">
+                        <div class="gov-contact-info">
+                            <div class="gov-contact-item">
+                                <i class="fas fa-envelope" aria-hidden="true"></i>
+                                <a href="<?php echo esc_url(home_url('/contact/')); ?>">お問い合わせフォーム</a>
+                            </div>
+                            <div class="gov-contact-item">
+                                <i class="fas fa-clock" aria-hidden="true"></i>
+                                <span>営業時間: 平日 9:00〜18:00</span>
+                            </div>
+                        </div>
+                        
+                        <div class="gov-social-row" aria-label="ソーシャルメディア">
                             <?php
                             $sns_urls = gi_get_sns_urls();
                             $social_config = [
@@ -815,7 +777,7 @@ if (!function_exists('gi_get_cached_stats')) {
                             foreach ($sns_urls as $platform => $url) {
                                 if (!empty($url) && isset($social_config[$platform])) {
                                     $config = $social_config[$platform];
-                                    echo '<a href="' . esc_url($url) . '" class="ji-social-link" aria-label="' . esc_attr($config['label']) . 'でフォロー" target="_blank" rel="noopener noreferrer">';
+                                    echo '<a href="' . esc_url($url) . '" class="gov-social-link" aria-label="' . esc_attr($config['label']) . 'でフォロー" target="_blank" rel="noopener noreferrer">';
                                     echo '<i class="' . esc_attr($config['icon']) . '" aria-hidden="true"></i>';
                                     echo '</a>';
                                 }
@@ -824,44 +786,56 @@ if (!function_exists('gi_get_cached_stats')) {
                         </div>
                     </div>
                     
-                    <!-- Services Column -->
-                    <div class="ji-nav-column">
-                        <h3 class="ji-nav-title">サービス</h3>
-                        <ul class="ji-nav-list">
+                    <!-- Column 2: 主要リンク -->
+                    <div class="gov-nav-column">
+                        <h3 class="gov-nav-title">主要リンク</h3>
+                        <ul class="gov-nav-list">
                             <li>
-                                <a href="<?php echo esc_url(get_post_type_archive_link('grant')); ?>" class="ji-nav-link">
+                                <a href="<?php echo esc_url(get_post_type_archive_link('grant')); ?>" class="gov-nav-link">
                                     補助金・助成金一覧
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
                             <li>
-                                <a href="<?php echo esc_url(add_query_arg('application_status', 'open', get_post_type_archive_link('grant'))); ?>" class="ji-nav-link ji-nav-link-live">
-                                    <span class="ji-live-dot" aria-hidden="true"></span>
+                                <a href="<?php echo esc_url(add_query_arg('application_status', 'open', get_post_type_archive_link('grant'))); ?>" class="gov-nav-link gov-nav-link-live">
+                                    <span class="gov-live-dot" aria-hidden="true"></span>
                                     募集中の補助金
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
                             <li>
-                                <a href="<?php echo esc_url(home_url('/subsidy-diagnosis/')); ?>" class="ji-nav-link">
+                                <a href="<?php echo esc_url(home_url('/subsidy-diagnosis/')); ?>" class="gov-nav-link">
                                     補助金診断
+                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="<?php echo esc_url(home_url('/column/')); ?>" class="gov-nav-link">
+                                    コラム
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
                         </ul>
                     </div>
                     
-                    <!-- News Column -->
-                    <div class="ji-nav-column">
-                        <h3 class="ji-nav-title">コンテンツ</h3>
-                        <ul class="ji-nav-list">
+                    <!-- Column 3: サポート -->
+                    <div class="gov-nav-column">
+                        <h3 class="gov-nav-title">サポート</h3>
+                        <ul class="gov-nav-list">
                             <li>
-                                <a href="<?php echo esc_url(home_url('/column/')); ?>" class="ji-nav-link">
-                                    コラム
+                                <a href="<?php echo esc_url(home_url('/about/')); ?>" class="gov-nav-link">
+                                    当サイトについて
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
                             <li>
-                                <a href="<?php echo esc_url(home_url('/news/')); ?>" class="ji-nav-link">
+                                <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="gov-nav-link">
+                                    お問い合わせ
+                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="<?php echo esc_url(home_url('/news/')); ?>" class="gov-nav-link">
                                     お知らせ
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
@@ -869,19 +843,25 @@ if (!function_exists('gi_get_cached_stats')) {
                         </ul>
                     </div>
                     
-                    <!-- Support Column -->
-                    <div class="ji-nav-column">
-                        <h3 class="ji-nav-title">サポート</h3>
-                        <ul class="ji-nav-list">
+                    <!-- Column 4: 関連情報 -->
+                    <div class="gov-nav-column">
+                        <h3 class="gov-nav-title">関連情報</h3>
+                        <ul class="gov-nav-list">
                             <li>
-                                <a href="<?php echo esc_url(home_url('/contact/')); ?>" class="ji-nav-link">
-                                    お問い合わせ
+                                <a href="<?php echo esc_url(home_url('/sitemap/')); ?>" class="gov-nav-link">
+                                    サイトマップ
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
                             <li>
-                                <a href="<?php echo esc_url(home_url('/about/')); ?>" class="ji-nav-link">
-                                    運営者情報
+                                <a href="<?php echo esc_url(home_url('/accessibility/')); ?>" class="gov-nav-link">
+                                    アクセシビリティ
+                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
+                                </a>
+                            </li>
+                            <li>
+                                <a href="<?php echo esc_url(home_url('/rss/')); ?>" class="gov-nav-link">
+                                    RSS
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
@@ -891,19 +871,67 @@ if (!function_exists('gi_get_cached_stats')) {
                 </div>
             </nav>
             
-            <!-- Bottom Section -->
-            <div class="ji-footer-bottom">
-                <div class="ji-bottom-wrapper">
-                    <div class="ji-bottom-left">
-                        <p class="ji-copyright">
+            <!-- Trust Section - 信頼性 -->
+            <section class="gov-footer-trust" aria-labelledby="trust-heading">
+                <div class="gov-trust-grid">
+                    <div class="gov-trust-item">
+                        <div class="gov-trust-icon">
+                            <i class="fas fa-sync-alt" aria-hidden="true"></i>
+                        </div>
+                        <div class="gov-trust-content">
+                            <h4>毎日更新</h4>
+                            <p>公的機関の最新情報を反映</p>
+                        </div>
+                    </div>
+                    
+                    <div class="gov-trust-item">
+                        <div class="gov-trust-icon">
+                            <i class="fas fa-user-check" aria-hidden="true"></i>
+                        </div>
+                        <div class="gov-trust-content">
+                            <h4>専門家監修</h4>
+                            <p>補助金申請の専門家が監修</p>
+                        </div>
+                    </div>
+                    
+                    <div class="gov-trust-item">
+                        <div class="gov-trust-icon">
+                            <i class="fas fa-landmark" aria-hidden="true"></i>
+                        </div>
+                        <div class="gov-trust-content">
+                            <h4>公的情報源</h4>
+                            <p>国・自治体の公式発表を使用</p>
+                        </div>
+                    </div>
+                    
+                    <div class="gov-trust-item">
+                        <div class="gov-trust-icon">
+                            <i class="fas fa-lock" aria-hidden="true"></i>
+                        </div>
+                        <div class="gov-trust-content">
+                            <h4>セキュリティ</h4>
+                            <p>SSL暗号化通信で安全</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+        </div>
+        
+        <!-- Bottom Section -->
+        <div class="gov-footer-bottom">
+            <div class="gov-footer-inner">
+                <div class="gov-bottom-wrapper">
+                    <div class="gov-bottom-left">
+                        <p class="gov-copyright">
                             &copy; <?php echo date('Y'); ?> <strong><?php bloginfo('name'); ?></strong>. All rights reserved.
                         </p>
                         <?php
                         $stats = gi_get_cached_stats();
                         $last_updated = get_option('gi_last_updated', date('Y-m-d'));
                         ?>
-                        <div class="ji-update-info">
-                            <span class="ji-update-dot" aria-hidden="true"></span>
+                        <div class="gov-update-info">
+                            <span class="gov-update-dot" aria-hidden="true"></span>
                             <span>最終更新: <?php echo esc_html(date_i18n('Y年n月j日', strtotime($last_updated))); ?></span>
                             <?php if (!empty($stats['total_grants'])): ?>
                             <span>|</span>
@@ -912,14 +940,13 @@ if (!function_exists('gi_get_cached_stats')) {
                         </div>
                     </div>
                     
-                    <nav class="ji-legal-links" aria-label="法的情報">
-                        <a href="<?php echo esc_url(home_url('/privacy/')); ?>" class="ji-legal-link">プライバシーポリシー</a>
-                        <a href="<?php echo esc_url(home_url('/terms/')); ?>" class="ji-legal-link">利用規約</a>
-                        <a href="<?php echo esc_url(home_url('/disclaimer/')); ?>" class="ji-legal-link">免責事項</a>
+                    <nav class="gov-legal-links" aria-label="法的情報">
+                        <a href="<?php echo esc_url(home_url('/privacy/')); ?>" class="gov-legal-link">プライバシーポリシー</a>
+                        <a href="<?php echo esc_url(home_url('/terms/')); ?>" class="gov-legal-link">利用規約</a>
+                        <a href="<?php echo esc_url(home_url('/disclaimer/')); ?>" class="gov-legal-link">免責事項</a>
                     </nav>
                 </div>
             </div>
-            
         </div>
     </footer>
 
@@ -929,6 +956,48 @@ if (!function_exists('gi_get_cached_stats')) {
     ?>
 
     <?php wp_footer(); ?>
+    
+    <!-- Back to Top Script -->
+    <script>
+    (function() {
+        'use strict';
+        
+        var backToTopBtn = document.getElementById('backToTop');
+        if (!backToTopBtn) return;
+        
+        // Show/hide button based on scroll position
+        function toggleBackToTop() {
+            if (window.scrollY > 300) {
+                backToTopBtn.classList.add('visible');
+            } else {
+                backToTopBtn.classList.remove('visible');
+            }
+        }
+        
+        // Scroll to top smoothly
+        function scrollToTop() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+        
+        // Event listeners
+        window.addEventListener('scroll', toggleBackToTop, { passive: true });
+        backToTopBtn.addEventListener('click', scrollToTop);
+        
+        // Keyboard support
+        backToTopBtn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                scrollToTop();
+            }
+        });
+        
+        // Initial check
+        toggleBackToTop();
+    })();
+    </script>
     
     <?php
     // Organization構造化データ（JSON-LD形式）- SEO強化
