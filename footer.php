@@ -102,57 +102,6 @@ if (!function_exists('gi_get_cached_stats')) {
         }
         
         /* ===============================================
-           BACK TO TOP BUTTON
-           =============================================== */
-        .gov-back-to-top {
-            position: fixed;
-            bottom: 100px;
-            right: 24px;
-            width: 50px;
-            height: 50px;
-            background: var(--gov-navy);
-            color: var(--gov-white);
-            border: 2px solid var(--gov-gold);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(20px);
-            transition: all var(--gov-transition);
-            z-index: 1000;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-        
-        .gov-back-to-top.visible {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-        
-        .gov-back-to-top:hover {
-            background: var(--gov-gold);
-            color: var(--gov-navy);
-            transform: translateY(-3px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-        }
-        
-        .gov-back-to-top i {
-            font-size: 1.25rem;
-        }
-        
-        @media (max-width: 767px) {
-            .gov-back-to-top {
-                bottom: 80px;
-                right: 16px;
-                width: 44px;
-                height: 44px;
-            }
-        }
-        
-        /* ===============================================
            BASE FOOTER STYLES
            =============================================== */
         .gov-footer {
@@ -593,11 +542,6 @@ if (!function_exists('gi_get_cached_stats')) {
         }
     </style>
 
-    <!-- Back to Top Button -->
-    <button class="gov-back-to-top" id="backToTop" aria-label="ページの先頭へ戻る" title="ページの先頭へ戻る">
-        <i class="fas fa-chevron-up" aria-hidden="true"></i>
-    </button>
-
     <!-- Government Style Footer -->
     <footer class="gov-footer" role="contentinfo" itemscope itemtype="https://schema.org/WPFooter">
         
@@ -835,48 +779,6 @@ if (!function_exists('gi_get_cached_stats')) {
     ?>
 
     <?php wp_footer(); ?>
-    
-    <!-- Back to Top Script -->
-    <script>
-    (function() {
-        'use strict';
-        
-        var backToTopBtn = document.getElementById('backToTop');
-        if (!backToTopBtn) return;
-        
-        // Show/hide button based on scroll position
-        function toggleBackToTop() {
-            if (window.scrollY > 300) {
-                backToTopBtn.classList.add('visible');
-            } else {
-                backToTopBtn.classList.remove('visible');
-            }
-        }
-        
-        // Scroll to top smoothly
-        function scrollToTop() {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        }
-        
-        // Event listeners
-        window.addEventListener('scroll', toggleBackToTop, { passive: true });
-        backToTopBtn.addEventListener('click', scrollToTop);
-        
-        // Keyboard support
-        backToTopBtn.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                scrollToTop();
-            }
-        });
-        
-        // Initial check
-        toggleBackToTop();
-    })();
-    </script>
     
     <?php
     // Organization構造化データ（JSON-LD形式）- SEO強化
