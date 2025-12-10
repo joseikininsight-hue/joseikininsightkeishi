@@ -202,11 +202,11 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     left: 0;
     right: 0;
     z-index: 9999;
-    background: var(--gov-navy);
+    background: #0D2A52 !important;
     height: var(--header-height);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     /* 金のライン - 官公庁風のアクセント */
-    border-bottom: 4px solid var(--gov-gold);
+    border-bottom: 4px solid #C5A059 !important;
 }
 
 .ji-header.scrolled {
