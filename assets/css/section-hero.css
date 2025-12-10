@@ -1,8 +1,15 @@
 /* ==========================================================================
-   Hero Section - Design System v51.0
+   Hero Section - Government Official Design System v52.0
+   官公庁風デザイン - 濃紺×金カラースキーム
    ========================================================================== */
 
 .hero {
+    /* 官公庁カラーパレット */
+    --hero-gov-navy: #0D2A52;
+    --hero-gov-navy-light: #1A3D6E;
+    --hero-gov-gold: #C5A059;
+    --hero-gov-gold-light: #D4B77A;
+    
     --hero-color-black: #111111;
     --hero-color-white: #ffffff;
     --hero-color-gray-900: #1a1a1a;
@@ -254,38 +261,65 @@
     outline-offset: 2px;
 }
 
+/* 統計バー - 官公庁風デザイン */
 .hero__stats {
     display: flex;
-    gap: var(--hero-space-8);
-    padding-top: var(--hero-space-8);
-    border-top: 1px solid var(--hero-color-gray-100);
-    margin-top: var(--hero-space-4);
+    gap: 0;
+    padding: 0;
+    border-top: none;
+    margin-top: var(--hero-space-8);
+    background: linear-gradient(135deg, var(--hero-gov-navy) 0%, var(--hero-gov-navy-light) 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(13, 42, 82, 0.2);
 }
 
 .hero__stat {
     display: flex;
     flex-direction: column;
-    gap: var(--hero-space-1);
+    align-items: center;
+    justify-content: center;
+    gap: var(--hero-space-2);
+    padding: var(--hero-space-5) var(--hero-space-6);
+    flex: 1;
+    position: relative;
+    min-height: 90px;
+}
+
+.hero__stat:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 20%;
+    height: 60%;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.2);
 }
 
 .hero__stat-number {
     font-family: var(--hero-font-mono);
-    font-size: 24px;
+    font-size: 28px;
     font-weight: 900;
-    color: var(--hero-color-black);
+    color: var(--hero-color-white);
     letter-spacing: -0.02em;
     line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
 }
 
 .hero__stat-suffix {
     font-size: 14px;
     font-weight: 700;
+    color: var(--hero-gov-gold);
 }
 
 .hero__stat-label {
-    font-size: 12px;
-    color: var(--hero-color-gray-500);
-    font-weight: 500;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.75);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
 }
 
 .hero__visual {
@@ -454,18 +488,29 @@
     }
     
     .hero__stats {
-        flex-wrap: wrap;
-        gap: var(--hero-space-6);
-        justify-content: center;
+        flex-wrap: nowrap;
+        gap: 0;
+        justify-content: stretch;
+        border-radius: 8px;
     }
     
     .hero__stat {
-        min-width: 80px;
+        min-width: auto;
         align-items: center;
+        padding: var(--hero-space-4) var(--hero-space-3);
+        min-height: 72px;
     }
     
     .hero__stat-number {
-        font-size: 20px;
+        font-size: 18px;
+    }
+    
+    .hero__stat-suffix {
+        font-size: 11px;
+    }
+    
+    .hero__stat-label {
+        font-size: 9px;
     }
     
     .hero__image-wrapper {
