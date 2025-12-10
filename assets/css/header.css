@@ -3,7 +3,10 @@
  * 官公庁・自治体風デザイン
  * 濃紺×白×金のカラースキーム
  * 
- * @version 11.0.0
+ * @version 12.0.0
+ * - ヘッダー色強制（CSS最高優先度）
+ * - メガメニューデザイン刷新
+ * - テキスト色統一
  */
 
 /* ===============================================
@@ -416,7 +419,11 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     justify-content: space-between;
     margin-bottom: 28px;
     padding-bottom: 20px;
-    border-bottom: 2px solid var(--gov-gray-200);
+    border-bottom: 3px solid var(--gov-gold);
+    background: linear-gradient(to right, rgba(13, 42, 82, 0.03) 0%, transparent 100%);
+    padding: 16px 20px 20px;
+    margin: -16px -20px 28px;
+    border-radius: 8px 8px 0 0;
 }
 
 .ji-mega-menu-title {
@@ -465,48 +472,69 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 
 .ji-mega-column-title {
     color: var(--gov-navy);
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03em;
     margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--gov-gold);
-    display: inline-block;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, var(--gov-navy) 0%, var(--gov-navy-light) 100%);
+    color: var(--gov-white);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+}
+
+.ji-mega-column-title::before {
+    content: '';
+    width: 4px;
+    height: 100%;
+    background: var(--gov-gold);
+    position: absolute;
+    left: 0;
+    top: 0;
+    border-radius: 6px 0 0 6px;
 }
 
 .ji-mega-link {
     display: flex;
     align-items: center;
-    gap: 12px;
-    color: var(--gov-gray-700);
+    gap: 10px;
+    color: var(--gov-text-primary);
     font-size: 0.9375rem;
     font-weight: 500;
-    padding: 10px 14px;
-    margin: 2px -14px;
-    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 4px -16px;
+    border-radius: 8px;
     transition: all var(--transition);
-    min-height: 44px;
+    min-height: 48px;
     position: relative;
     text-decoration: none;
+    border: 1px solid transparent;
 }
 
 .ji-mega-link::before {
-    content: '›';
-    color: var(--gov-gold);
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin-right: 4px;
-    transition: transform var(--transition);
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--gov-gold);
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all var(--transition);
 }
 
 .ji-mega-link:hover,
 .ji-mega-link:focus-visible {
     color: var(--gov-navy);
-    background: var(--gov-gray-50);
+    background: linear-gradient(135deg, var(--gov-gray-50) 0%, rgba(197, 160, 89, 0.08) 100%);
+    border-color: var(--gov-gold);
+    transform: translateX(4px);
 }
 
 .ji-mega-link:hover::before {
-    transform: translateX(4px);
+    background: var(--gov-navy);
+    transform: scale(1.3);
 }
 
 .ji-mega-link:focus-visible {
@@ -554,7 +582,7 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
 }
 
 .ji-prefecture-link {
-    color: var(--gov-gray-600);
+    color: var(--gov-text-secondary);
     font-size: 0.8125rem;
     font-weight: 500;
     padding: 10px 12px;
@@ -566,14 +594,17 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     align-items: center;
     justify-content: center;
     text-decoration: none;
-    border: 1px solid transparent;
+    border: 1px solid var(--gov-gray-200);
+    background: var(--gov-white);
 }
 
 .ji-prefecture-link:hover,
 .ji-prefecture-link:focus-visible {
-    color: var(--gov-navy);
-    background: var(--gov-gray-50);
-    border-color: var(--gov-gray-200);
+    color: var(--gov-white);
+    background: var(--gov-navy);
+    border-color: var(--gov-navy);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(13, 42, 82, 0.2);
 }
 
 .ji-prefecture-link:focus-visible {
