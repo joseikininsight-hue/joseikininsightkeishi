@@ -80,14 +80,8 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
    HEADER PLACEHOLDER
    =============================================== */
 .ji-header-placeholder { 
-    height: calc(var(--utility-bar-height) + var(--header-height)); 
+    height: var(--header-height); 
     display: block; 
-}
-
-@media (max-width: 767px) {
-    .ji-header-placeholder { 
-        height: var(--header-height); 
-    }
 }
 
 /* ===============================================
@@ -209,16 +203,10 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
     right: 0;
     z-index: 9999;
     background: var(--gov-navy);
-    height: calc(var(--utility-bar-height) + var(--header-height));
+    height: var(--header-height);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
     /* 金のライン - 官公庁風のアクセント */
     border-bottom: 4px solid var(--gov-gold);
-}
-
-@media (max-width: 767px) {
-    .ji-header {
-        height: var(--header-height);
-    }
 }
 
 .ji-header.scrolled {
