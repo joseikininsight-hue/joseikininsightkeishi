@@ -70,15 +70,8 @@ $header_data = ji_get_header_data();
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- Font Awesome with display=swap -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css" media="print" onload="this.media='all'">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/brands.min.css" media="print" onload="this.media='all'">
-    <noscript>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/fontawesome.min.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/solid.min.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/brands.min.css">
-    </noscript>
+    <!-- Font Awesome 6.5 (with X/Twitter icon support) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
     
     <?php wp_head(); ?>
     
@@ -91,7 +84,7 @@ $header_data = ji_get_header_data();
 <a href="#main-content" class="ji-skip-link">メインコンテンツへスキップ</a>
 
 <!-- Main Header -->
-<header id="ji-header" class="ji-header" role="banner">
+<header id="ji-header" class="ji-header" role="banner" style="background: #0D2A52 !important; border-bottom: 4px solid #C5A059 !important;">
     <div class="ji-header-main">
     <div class="ji-header-inner">
         <!-- Logo -->
