@@ -4,7 +4,7 @@
  * 官公庁風デザイン - 信頼性・公共性・堅実性を演出
  * 
  * @package Joseikin_Insight_Footer
- * @version 9.0.0
+ * @version 9.0.1
  */
 
 // SNS URLヘルパー関数
@@ -76,7 +76,7 @@ if (!function_exists('gi_get_cached_stats')) {
     <style>
         /* ===============================================
            JOSEIKIN INSIGHT - GOVERNMENT STYLE FOOTER
-           官公庁風デザイン v9.0
+           官公庁風デザイン v9.0.1
            =============================================== */
         
         :root {
@@ -173,82 +173,6 @@ if (!function_exists('gi_get_cached_stats')) {
             .gov-footer-inner {
                 padding: 0 2rem;
             }
-        }
-        
-        /* ===============================================
-           EXTERNAL LINKS SECTION - 関連リンク
-           =============================================== */
-        .gov-external-links {
-            padding: 2rem 0;
-            border-bottom: 1px solid var(--gov-border);
-            background: var(--gov-navy-dark);
-        }
-        
-        .gov-external-header {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .gov-external-title {
-            font-size: 0.875rem;
-            font-weight: 700;
-            color: var(--gov-white);
-            border-left: 3px solid var(--gov-gold);
-            padding-left: 0.75rem;
-            margin: 0;
-        }
-        
-        .gov-external-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-        }
-        
-        @media (min-width: 640px) {
-            .gov-external-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-        
-        @media (min-width: 1024px) {
-            .gov-external-grid {
-                grid-template-columns: repeat(6, 1fr);
-            }
-        }
-        
-        .gov-external-link {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.625rem 0.875rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--gov-border);
-            border-radius: 6px;
-            color: var(--gov-text-light);
-            text-decoration: none;
-            font-size: 0.8125rem;
-            font-weight: 500;
-            transition: all var(--gov-transition);
-        }
-        
-        .gov-external-link:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: var(--gov-gold);
-            color: var(--gov-white);
-            transform: translateY(-2px);
-        }
-        
-        .gov-external-link i {
-            font-size: 0.75rem;
-            color: var(--gov-gold);
-        }
-        
-        .gov-external-link .fa-external-link-alt {
-            font-size: 0.625rem;
-            margin-left: auto;
-            opacity: 0.6;
         }
         
         /* ===============================================
@@ -693,47 +617,6 @@ if (!function_exists('gi_get_cached_stats')) {
                 <meta itemprop="addressCountry" content="JP">
             </div>
         </div>
-        
-        <!-- External Links Section - 関連リンク -->
-        <section class="gov-external-links" aria-labelledby="external-links-heading">
-            <div class="gov-footer-inner">
-                <div class="gov-external-header">
-                    <h2 id="external-links-heading" class="gov-external-title">関連リンク</h2>
-                </div>
-                <div class="gov-external-grid">
-                    <a href="https://www.meti.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-landmark" aria-hidden="true"></i>
-                        <span>経済産業省</span>
-                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                    </a>
-                    <a href="https://www.chusho.meti.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-building" aria-hidden="true"></i>
-                        <span>中小企業庁</span>
-                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                    </a>
-                    <a href="https://www.jgrants-portal.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-coins" aria-hidden="true"></i>
-                        <span>Jグランツ</span>
-                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                    </a>
-                    <a href="https://www.mirasapo-plus.go.jp/" class="gov-external-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-hands-helping" aria-hidden="true"></i>
-                        <span>ミラサポplus</span>
-                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                    </a>
-                    <a href="https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/koyou_roudou/index.html" class="gov-external-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-users" aria-hidden="true"></i>
-                        <span>厚生労働省</span>
-                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                    </a>
-                    <a href="https://www.soumu.go.jp/main_sosiki/jichi_zeisei/czaisei/czaisei_seido/ichiran.html" class="gov-external-link" target="_blank" rel="noopener noreferrer">
-                        <i class="fas fa-map-marked-alt" aria-hidden="true"></i>
-                        <span>総務省</span>
-                        <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                    </a>
-                </div>
-            </div>
-        </section>
         
         <div class="gov-footer-inner">
             
