@@ -76,6 +76,18 @@ $header_data = ji_get_header_data();
     <?php wp_head(); ?>
     
     <link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/header.css'); ?>">
+    
+    <!-- Header Color Override - Maximum Priority -->
+    <style id="ji-header-override">
+        #ji-header.ji-header,
+        header#ji-header.ji-header,
+        body header#ji-header.ji-header,
+        html body header#ji-header.ji-header {
+            background: #0D2A52 !important;
+            background-color: #0D2A52 !important;
+            border-bottom: 4px solid #C5A059 !important;
+        }
+    </style>
 </head>
 
 <body <?php body_class(); ?>>
@@ -84,7 +96,7 @@ $header_data = ji_get_header_data();
 <a href="#main-content" class="ji-skip-link">メインコンテンツへスキップ</a>
 
 <!-- Main Header -->
-<header id="ji-header" class="ji-header" role="banner" style="background: #0D2A52 !important; border-bottom: 4px solid #C5A059 !important;">
+<header id="ji-header" class="ji-header" role="banner">
     <div class="ji-header-main">
     <div class="ji-header-inner">
         <!-- Logo -->
@@ -699,6 +711,16 @@ $header_data = ji_get_header_data();
     
     handleScroll();
     
-    console.log('[✓] Joseikin Insight Header v11.0.1 - Government Official Style (Simplified)');
+    console.log('[✓] Joseikin Insight Header v12.0.0 - Government Official Style (Simplified)');
+    
+    // Force header color via JavaScript as backup
+    (function forceHeaderColor() {
+        const header = document.getElementById('ji-header');
+        if (header) {
+            header.style.setProperty('background', '#0D2A52', 'important');
+            header.style.setProperty('background-color', '#0D2A52', 'important');
+            header.style.setProperty('border-bottom', '4px solid #C5A059', 'important');
+        }
+    })();
 })();
 </script>

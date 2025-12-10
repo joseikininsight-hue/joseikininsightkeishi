@@ -4,7 +4,7 @@
  * 官公庁風デザイン - 信頼性・公共性・堅実性を演出
  * 
  * @package Joseikin_Insight_Footer
- * @version 9.0.2
+ * @version 9.1.0
  */
 
 // SNS URLヘルパー関数
@@ -76,7 +76,7 @@ if (!function_exists('gi_get_cached_stats')) {
     <style>
         /* ===============================================
            JOSEIKIN INSIGHT - GOVERNMENT STYLE FOOTER
-           官公庁風デザイン v9.0.1
+           官公庁風デザイン v9.1.0
            =============================================== */
         
         :root {
@@ -328,30 +328,32 @@ if (!function_exists('gi_get_cached_stats')) {
         }
         
         .gov-nav-link {
-            color: var(--gov-text-muted);
+            color: var(--gov-text-light);
             text-decoration: none;
             font-size: 0.875rem;
             font-weight: 500;
             transition: all var(--gov-transition);
             display: inline-flex;
             align-items: center;
-            gap: 0.375rem;
-            padding: 0.375rem 0;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
         }
         
         .gov-nav-link:hover {
             color: var(--gov-gold);
-            padding-left: 0.5rem;
+            padding-left: 0.75rem;
         }
         
         .gov-nav-link i {
             font-size: 0.625rem;
-            opacity: 0;
-            transition: opacity var(--gov-transition);
+            opacity: 0.7;
+            color: var(--gov-gold);
+            transition: all var(--gov-transition);
         }
         
         .gov-nav-link:hover i {
             opacity: 1;
+            transform: translateX(4px);
         }
         
         /* Live Badge */
@@ -648,22 +650,41 @@ if (!function_exists('gi_get_cached_stats')) {
                         <div class="gov-social-row" aria-label="ソーシャルメディア">
                             <?php
                             $sns_urls = gi_get_sns_urls();
-                            $social_config = [
-                                'twitter' => ['icon' => 'fa-brands fa-x-twitter', 'label' => 'X'],
-                                'facebook' => ['icon' => 'fab fa-facebook-f', 'label' => 'Facebook'],
-                                'instagram' => ['icon' => 'fab fa-instagram', 'label' => 'Instagram'],
-                                'youtube' => ['icon' => 'fab fa-youtube', 'label' => 'YouTube'],
-                                'note' => ['icon' => 'fas fa-pen-nib', 'label' => 'note'],
-                                'linkedin' => ['icon' => 'fab fa-linkedin-in', 'label' => 'LinkedIn']
-                            ];
-                            
-                            foreach ($sns_urls as $platform => $url) {
-                                if (!empty($url) && isset($social_config[$platform])) {
-                                    $config = $social_config[$platform];
-                                    echo '<a href="' . esc_url($url) . '" class="gov-social-link" aria-label="' . esc_attr($config['label']) . 'でフォロー" target="_blank" rel="noopener noreferrer">';
-                                    echo '<i class="' . esc_attr($config['icon']) . '" aria-hidden="true"></i>';
-                                    echo '</a>';
-                                }
+                            // X (Twitter) - SVGインラインで確実に表示
+                            if (!empty($sns_urls['twitter'])) {
+                                echo '<a href="' . esc_url($sns_urls['twitter']) . '" class="gov-social-link" aria-label="Xでフォロー" target="_blank" rel="noopener noreferrer">';
+                                echo '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>';
+                                echo '</a>';
+                            }
+                            // Facebook
+                            if (!empty($sns_urls['facebook'])) {
+                                echo '<a href="' . esc_url($sns_urls['facebook']) . '" class="gov-social-link" aria-label="Facebookでフォロー" target="_blank" rel="noopener noreferrer">';
+                                echo '<i class="fab fa-facebook-f" aria-hidden="true"></i>';
+                                echo '</a>';
+                            }
+                            // Instagram
+                            if (!empty($sns_urls['instagram'])) {
+                                echo '<a href="' . esc_url($sns_urls['instagram']) . '" class="gov-social-link" aria-label="Instagramでフォロー" target="_blank" rel="noopener noreferrer">';
+                                echo '<i class="fab fa-instagram" aria-hidden="true"></i>';
+                                echo '</a>';
+                            }
+                            // YouTube
+                            if (!empty($sns_urls['youtube'])) {
+                                echo '<a href="' . esc_url($sns_urls['youtube']) . '" class="gov-social-link" aria-label="YouTubeでフォロー" target="_blank" rel="noopener noreferrer">';
+                                echo '<i class="fab fa-youtube" aria-hidden="true"></i>';
+                                echo '</a>';
+                            }
+                            // note
+                            if (!empty($sns_urls['note'])) {
+                                echo '<a href="' . esc_url($sns_urls['note']) . '" class="gov-social-link" aria-label="noteでフォロー" target="_blank" rel="noopener noreferrer">';
+                                echo '<i class="fas fa-pen-nib" aria-hidden="true"></i>';
+                                echo '</a>';
+                            }
+                            // LinkedIn
+                            if (!empty($sns_urls['linkedin'])) {
+                                echo '<a href="' . esc_url($sns_urls['linkedin']) . '" class="gov-social-link" aria-label="LinkedInでフォロー" target="_blank" rel="noopener noreferrer">';
+                                echo '<i class="fab fa-linkedin-in" aria-hidden="true"></i>';
+                                echo '</a>';
                             }
                             ?>
                         </div>
