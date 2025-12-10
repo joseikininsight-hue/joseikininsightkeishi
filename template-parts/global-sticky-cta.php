@@ -1,13 +1,14 @@
 <?php
 /**
- * Template Part: Global Sticky CTA - Mobile Compact Version
- * グローバルスティッキーCTA - モバイル最適化・検索重視版 v11.1
- * * @package Grant_Insight_Perfect
- * @version 11.1.0
- * * === 変更点 ===
- * - Mobile Height: 72px -> 58px (画面占有率を削減)
- * - Layout: 検索(60%) : 診断(40%) の比率は維持
- * - Style: ハイエンド・モノクローム
+ * Template Part: Global Sticky CTA - Government Official Style
+ * グローバルスティッキーCTA - 官公庁風デザイン
+ * 
+ * @package Grant_Insight_Perfect
+ * @version 12.0.0
+ * 
+ * === 変更点 ===
+ * - 官公庁風カラースキーム（濃紺×金）
+ * - 「助成金を探す」→「補助金・助成金を探す」に変更
  */
 
 if (!defined('ABSPATH')) exit;
@@ -24,7 +25,7 @@ if (get_query_var('hide_sticky_cta')) return;
            aria-label="無料で診断する">
             <div class="ui-btn-icon-wrap">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M9 18l6-6-6-6"/>
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
                 </svg>
             </div>
             <div class="ui-btn-text">
@@ -38,7 +39,7 @@ if (get_query_var('hide_sticky_cta')) return;
            aria-label="補助金・助成金を探す">
             <div class="ui-btn-text">
                 <span class="en">SEARCH GRANTS</span>
-                <span class="ja">助成金を探す</span>
+                <span class="ja">補助金・助成金を探す</span>
             </div>
             <div class="ui-btn-icon-wrap">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -55,29 +56,30 @@ if (get_query_var('hide_sticky_cta')) return;
 
 <style>
 /* ============================================
-   Global Sticky CTA Styles (Mobile Compact)
+   Global Sticky CTA Styles - Government Official Style v12.0
+   官公庁風デザイン - 濃紺×金カラースキーム
    ============================================ */
 
 :root {
     --cta-z-index: 9999;
-    /* デフォルト（PC・タブレット）の高さ */
-    --cta-height: 70px; 
+    --cta-height: 70px;
+    /* 官公庁カラーパレット */
+    --cta-gov-navy: #0D2A52;
+    --cta-gov-navy-light: #1A3D6E;
+    --cta-gov-gold: #C5A059;
+    --cta-gov-gold-light: #D4B77A;
     --cta-bg-light: #ffffff;
-    --cta-bg-dark: #111111;
-    --cta-text-main: #111111;
+    --cta-text-main: #0D2A52;
     --cta-text-inverse: #ffffff;
-    --cta-border: #e5e5e5;
-    --cta-accent: #FFD700;
+    --cta-border: #E2E8F0;
     --cta-font-en: 'Inter', -apple-system, sans-serif;
     --cta-font-ja: 'Noto Sans JP', sans-serif;
     --cta-trans: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* スマホ用の変数を上書き */
 @media (max-width: 767px) {
     :root {
-        /* モバイル時の高さを縮小 (58px) */
-        --cta-height: 58px;
+        --cta-height: 60px;
     }
 }
 
@@ -89,15 +91,15 @@ if (get_query_var('hide_sticky_cta')) return;
     right: 0;
     z-index: var(--cta-z-index);
     background: var(--cta-bg-light);
-    border-top: 1px solid var(--cta-border);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    border-top: 3px solid var(--cta-gov-gold);
+    box-shadow: 0 -8px 32px rgba(13, 42, 82, 0.15);
     padding-bottom: env(safe-area-inset-bottom);
     transform: translateY(0);
     transition: transform 0.4s var(--cta-trans);
     will-change: transform;
 }
 
-/* Hidden State (Scroll Down) */
+/* Hidden State */
 .ui-sticky-cta.is-hidden {
     transform: translateY(100%);
 }
@@ -119,11 +121,11 @@ if (get_query_var('hide_sticky_cta')) return;
     text-decoration: none;
     border: none;
     cursor: pointer;
-    padding: 0 12px;
-    gap: 10px;
+    padding: 0 16px;
+    gap: 12px;
     position: relative;
     overflow: hidden;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
 /* Text Styling */
@@ -131,17 +133,16 @@ if (get_query_var('hide_sticky_cta')) return;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    line-height: 1.1;
+    line-height: 1.2;
 }
 
 .ui-btn-text .en {
     font-family: var(--cta-font-en);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    letter-spacing: 0.05em;
-    opacity: 0.8;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    margin-bottom: 1px;
+    margin-bottom: 2px;
 }
 
 .ui-btn-text .ja {
@@ -150,46 +151,59 @@ if (get_query_var('hide_sticky_cta')) return;
     font-weight: 700;
 }
 
-/* --- Diagnosis Button (Secondary / White) --- */
+/* --- Diagnosis Button (Secondary) --- */
 .ui-btn-diagnosis {
-    flex: 0 0 40%; /* Width 40% */
+    flex: 0 0 38%;
     background: var(--cta-bg-light);
     color: var(--cta-text-main);
     border-right: 1px solid var(--cta-border);
 }
 
+.ui-btn-diagnosis:hover {
+    background: #F8FAFC;
+}
+
 .ui-btn-diagnosis:active {
-    background: #f5f5f5;
+    background: #F1F5F9;
+}
+
+.ui-btn-diagnosis .ui-btn-text .en {
+    color: var(--cta-gov-gold);
+    opacity: 1;
 }
 
 .ui-btn-diagnosis .ui-btn-text .ja {
-    font-size: 12px; /* Compact */
-}
-.ui-btn-diagnosis .ui-btn-text .en {
-    font-size: 9px;
+    font-size: 13px;
+    color: var(--cta-gov-navy);
 }
 
-/* --- Search Button (Primary / Black / Focus) --- */
+.ui-btn-diagnosis .ui-btn-icon-wrap {
+    color: var(--cta-gov-gold);
+}
+
+/* --- Search Button (Primary / Navy / Focus) --- */
 .ui-btn-search {
-    flex: 1; /* Takes remaining space (60%) */
-    background: var(--cta-bg-dark);
+    flex: 1;
+    background: linear-gradient(135deg, var(--cta-gov-navy) 0%, var(--cta-gov-navy-light) 100%);
     color: var(--cta-text-inverse);
 }
 
-.ui-btn-search:active {
-    background: #000000;
-    opacity: 0.9;
+.ui-btn-search:hover {
+    background: linear-gradient(135deg, var(--cta-gov-navy-light) 0%, var(--cta-gov-navy) 100%);
 }
 
-/* Highlight "SEARCH" text */
+.ui-btn-search:active {
+    opacity: 0.95;
+}
+
 .ui-btn-search .ui-btn-text .en {
-    color: var(--cta-accent);
+    color: var(--cta-gov-gold);
     opacity: 1;
-    font-size: 9px;
 }
 
 .ui-btn-search .ui-btn-text .ja {
-    font-size: 15px; /* Larger for emphasis */
+    font-size: 15px;
+    color: var(--cta-text-inverse);
 }
 
 /* Icon Wrapper */
@@ -199,35 +213,40 @@ if (get_query_var('hide_sticky_cta')) return;
     justify-content: center;
 }
 
-/* Shine Animation (Only on Search) */
+.ui-btn-search .ui-btn-icon-wrap {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 8px;
+    border-radius: 8px;
+}
+
+/* Shine Animation */
 .ui-btn-effect {
     position: absolute;
     top: 0;
     left: -100%;
     width: 50%;
     height: 100%;
-    background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0) 100%);
+    background: linear-gradient(to right, rgba(197, 160, 89, 0) 0%, rgba(197, 160, 89, 0.3) 50%, rgba(197, 160, 89, 0) 100%);
     transform: skewX(-25deg);
-    animation: cta-shine 6s infinite;
+    animation: cta-shine 5s infinite;
     pointer-events: none;
 }
 
 @keyframes cta-shine {
-    0%, 80% { left: -100%; }
+    0%, 75% { left: -100%; }
     100% { left: 200%; }
 }
 
 /* Responsive Adjustments */
 @media (max-width: 767px) {
-    /* さらにコンパクトに調整 */
     .ui-sticky-btn {
-        padding: 0 8px;
+        padding: 0 10px;
         gap: 8px;
     }
     
     .ui-btn-text .en {
-        font-size: 8px; /* 英語表記を極小に */
-        letter-spacing: 0;
+        font-size: 8px;
+        letter-spacing: 0.05em;
     }
     
     .ui-btn-diagnosis .ui-btn-text .ja {
@@ -235,13 +254,17 @@ if (get_query_var('hide_sticky_cta')) return;
     }
     
     .ui-btn-search .ui-btn-text .ja {
-        font-size: 14px;
+        font-size: 13px;
     }
     
-    /* アイコンサイズ微調整 */
     .ui-btn-icon-wrap svg {
         width: 16px;
         height: 16px;
+    }
+    
+    .ui-btn-search .ui-btn-icon-wrap {
+        padding: 6px;
+        border-radius: 6px;
     }
 }
 
