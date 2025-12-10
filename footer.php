@@ -4,7 +4,7 @@
  * 官公庁風デザイン - 信頼性・公共性・堅実性を演出
  * 
  * @package Joseikin_Insight_Footer
- * @version 9.0.1
+ * @version 9.0.2
  */
 
 // SNS URLヘルパー関数
@@ -197,7 +197,7 @@ if (!function_exists('gi_get_cached_stats')) {
         
         @media (min-width: 1024px) {
             .gov-nav-grid {
-                grid-template-columns: 1.5fr 1fr 1fr 1fr;
+                grid-template-columns: 1.5fr 1fr 1fr;
                 gap: 2rem;
             }
         }
@@ -649,7 +649,7 @@ if (!function_exists('gi_get_cached_stats')) {
                             <?php
                             $sns_urls = gi_get_sns_urls();
                             $social_config = [
-                                'twitter' => ['icon' => 'fab fa-x-twitter', 'label' => 'X (Twitter)'],
+                                'twitter' => ['icon' => 'fab fa-twitter', 'label' => 'X (Twitter)'],
                                 'facebook' => ['icon' => 'fab fa-facebook-f', 'label' => 'Facebook'],
                                 'instagram' => ['icon' => 'fab fa-instagram', 'label' => 'Instagram'],
                                 'youtube' => ['icon' => 'fab fa-youtube', 'label' => 'YouTube'],
@@ -720,31 +720,6 @@ if (!function_exists('gi_get_cached_stats')) {
                             <li>
                                 <a href="<?php echo esc_url(home_url('/news/')); ?>" class="gov-nav-link">
                                     お知らせ
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                    
-                    <!-- Column 4: 関連情報 -->
-                    <div class="gov-nav-column">
-                        <h3 class="gov-nav-title">関連情報</h3>
-                        <ul class="gov-nav-list">
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/sitemap/')); ?>" class="gov-nav-link">
-                                    サイトマップ
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/accessibility/')); ?>" class="gov-nav-link">
-                                    アクセシビリティ
-                                    <i class="fas fa-chevron-right" aria-hidden="true"></i>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="<?php echo esc_url(home_url('/rss/')); ?>" class="gov-nav-link">
-                                    RSS
                                     <i class="fas fa-chevron-right" aria-hidden="true"></i>
                                 </a>
                             </li>
