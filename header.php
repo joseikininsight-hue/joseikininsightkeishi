@@ -77,8 +77,9 @@ $header_data = ji_get_header_data();
     
     <link rel="stylesheet" href="<?php echo esc_url(get_template_directory_uri() . '/assets/css/header.css'); ?>">
     
-    <!-- Header Color Override - Maximum Priority -->
+    <!-- Header & Mega Menu Override - Maximum Priority -->
     <style id="ji-header-override">
+        /* ヘッダー背景強制 */
         #ji-header.ji-header,
         header#ji-header.ji-header,
         body header#ji-header.ji-header,
@@ -86,6 +87,62 @@ $header_data = ji_get_header_data();
             background: #0D2A52 !important;
             background-color: #0D2A52 !important;
             border-bottom: 4px solid #C5A059 !important;
+        }
+        
+        /* メガメニュー背景強制 - var(--black)を上書き */
+        .ji-mega-menu,
+        .ji-nav-item .ji-mega-menu,
+        header .ji-mega-menu,
+        #ji-header .ji-mega-menu,
+        body .ji-mega-menu,
+        html body .ji-mega-menu,
+        html body header .ji-mega-menu,
+        html body header#ji-header .ji-mega-menu {
+            background: #FFFFFF !important;
+            background-color: #FFFFFF !important;
+            border-top: none !important;
+            box-shadow: 0 20px 50px rgba(13, 42, 82, 0.15) !important;
+        }
+        
+        /* メガメニュー内のテキスト色 */
+        .ji-mega-menu-title,
+        .ji-mega-menu .ji-mega-menu-title {
+            color: #0D2A52 !important;
+        }
+        
+        .ji-mega-column-title {
+            background: linear-gradient(135deg, #0D2A52 0%, #1A3D6E 100%) !important;
+            color: #FFFFFF !important;
+        }
+        
+        .ji-mega-link {
+            color: #1E293B !important;
+        }
+        
+        .ji-mega-link:hover {
+            color: #0D2A52 !important;
+            background: linear-gradient(135deg, #F8FAFC 0%, rgba(197, 160, 89, 0.08) 100%) !important;
+            border-color: #C5A059 !important;
+        }
+        
+        .ji-mega-stat-value {
+            color: #0D2A52 !important;
+        }
+        
+        .ji-mega-stat-label {
+            color: #64748B !important;
+        }
+        
+        .ji-prefecture-link {
+            color: #475569 !important;
+            background: #FFFFFF !important;
+            border-color: #E2E8F0 !important;
+        }
+        
+        .ji-prefecture-link:hover {
+            color: #FFFFFF !important;
+            background: #0D2A52 !important;
+            border-color: #0D2A52 !important;
         }
     </style>
 </head>
@@ -711,16 +768,43 @@ $header_data = ji_get_header_data();
     
     handleScroll();
     
-    console.log('[✓] Joseikin Insight Header v12.0.0 - Government Official Style (Simplified)');
+    console.log('[✓] Joseikin Insight Header v12.1.0 - Government Official Style');
     
-    // Force header color via JavaScript as backup
-    (function forceHeaderColor() {
+    // Force header & mega menu colors via JavaScript as backup
+    (function forceColors() {
+        // ヘッダー背景強制
         const header = document.getElementById('ji-header');
         if (header) {
             header.style.setProperty('background', '#0D2A52', 'important');
             header.style.setProperty('background-color', '#0D2A52', 'important');
             header.style.setProperty('border-bottom', '4px solid #C5A059', 'important');
         }
+        
+        // メガメニュー背景強制
+        const megaMenus = document.querySelectorAll('.ji-mega-menu');
+        megaMenus.forEach(menu => {
+            menu.style.setProperty('background', '#FFFFFF', 'important');
+            menu.style.setProperty('background-color', '#FFFFFF', 'important');
+            menu.style.setProperty('border-top', 'none', 'important');
+            menu.style.setProperty('box-shadow', '0 20px 50px rgba(13, 42, 82, 0.15)', 'important');
+        });
     })();
+    
+    // MutationObserver to force colors on dynamic changes
+    const observer = new MutationObserver(() => {
+        const megaMenus = document.querySelectorAll('.ji-mega-menu');
+        megaMenus.forEach(menu => {
+            if (menu.style.background !== '#FFFFFF') {
+                menu.style.setProperty('background', '#FFFFFF', 'important');
+                menu.style.setProperty('background-color', '#FFFFFF', 'important');
+            }
+        });
+    });
+    
+    observer.observe(document.body, { 
+        attributes: true, 
+        subtree: true, 
+        attributeFilter: ['style', 'class'] 
+    });
 })();
 </script>
