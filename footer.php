@@ -649,7 +649,7 @@ if (!function_exists('gi_get_cached_stats')) {
                             <?php
                             $sns_urls = gi_get_sns_urls();
                             $social_config = [
-                                'twitter' => ['icon' => 'fab fa-twitter', 'label' => 'X (Twitter)'],
+                                'twitter' => ['icon' => 'fa-brands fa-x-twitter', 'label' => 'X'],
                                 'facebook' => ['icon' => 'fab fa-facebook-f', 'label' => 'Facebook'],
                                 'instagram' => ['icon' => 'fab fa-instagram', 'label' => 'Instagram'],
                                 'youtube' => ['icon' => 'fab fa-youtube', 'label' => 'YouTube'],
