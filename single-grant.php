@@ -1277,8 +1277,8 @@ wp_head();
                                 </button>
                             </div>
                             <div class="gi-ai-suggestions">
-                                <button class="gi-ai-chip" data-action="diagnosis" style="background:#e0f2fe;color:#0369a1;border-color:#bae6fd;">資格診断</button>
-                                <button class="gi-ai-chip" data-action="roadmap" style="background:#f0fdf4;color:#15803d;border-color:#bbf7d0;">ロードマップ</button>
+                                <button class="gi-ai-chip" data-action="diagnosis">資格診断</button>
+                                <button class="gi-ai-chip" data-action="roadmap">ロードマップ</button>
                                 <button class="gi-ai-chip" data-q="対象者を教えて">対象者</button>
                                 <button class="gi-ai-chip" data-q="補助金額は？">金額</button>
                                 <button class="gi-ai-chip" data-q="必要書類は？">書類</button>
@@ -1505,8 +1505,8 @@ wp_head();
                 </button>
             </div>
             <div class="gi-mobile-ai-chips">
-                <button class="gi-mobile-ai-chip" data-action="diagnosis" style="background:#e0f2fe;color:#0369a1;border-color:#bae6fd;">資格診断</button>
-                <button class="gi-mobile-ai-chip" data-action="roadmap" style="background:#f0fdf4;color:#15803d;border-color:#bbf7d0;">ロードマップ</button>
+                <button class="gi-mobile-ai-chip" data-action="diagnosis">資格診断</button>
+                <button class="gi-mobile-ai-chip" data-action="roadmap">ロードマップ</button>
                 <button class="gi-mobile-ai-chip" data-q="対象者を教えて">対象者</button>
                 <button class="gi-mobile-ai-chip" data-q="補助金額は？">金額</button>
                 <button class="gi-mobile-ai-chip" data-q="必要書類は？">書類</button>

@@ -4,7 +4,7 @@
  * =================================== */
 
 :root {
-    /* === カラーパレット（シンプル・クリーン） === */
+    /* === カラーパレット（官公庁スタイル） === */
     --gi-black: #333333;
     --gi-dark: #444444;
     --gi-gray-900: #555555;
@@ -23,14 +23,21 @@
     --gi-bg: #ffffff;
     --gi-bg-section: #f8f8f8;
     
-    /* プライマリカラー（控えめな青） */
-    --gi-primary: #0066cc;
-    --gi-primary-dark: #004499;
-    --gi-primary-light: #e8f4fc;
+    /* 官公庁カラーパレット */
+    --gi-gov-navy: #0D2A52;
+    --gi-gov-navy-dark: #081D3D;
+    --gi-gov-navy-light: #1A3D6E;
+    --gi-gov-gold: #C5A059;
+    --gi-gov-gold-light: #D4B77A;
     
-    /* アクセントカラー（赤系 - 重要な情報用） */
-    --gi-accent: #cc0000;
-    --gi-accent-light: #fff5f5;
+    /* プライマリカラー（官公庁濃紺） */
+    --gi-primary: #0D2A52;
+    --gi-primary-dark: #081D3D;
+    --gi-primary-light: #E8EEF5;
+    
+    /* アクセントカラー（官公庁金色） */
+    --gi-accent: #C5A059;
+    --gi-accent-light: #FDF8EF;
     
     /* セマンティックカラー */
     --gi-success: #2e7d32;
@@ -105,8 +112,6 @@ ul, ol {
 
 .gi-page {
     background: var(--gi-bg);
-    /* ヘッダー（64px）+ 金ライン（4px）の高さ分のパディング */
-    padding-top: 68px;
 }
 
 .gi-layout {
@@ -153,8 +158,10 @@ ul, ol {
 /* === パンくずリスト === */
 .gi-breadcrumb {
     padding: 12px 0;
+    padding-top: 80px; /* ヘッダー(64px) + 金ライン(4px) + 余白(12px) */
     border-bottom: 1px solid var(--gi-gray-400);
     font-size: 12px;
+    background: var(--gi-white);
 }
 
 .gi-breadcrumb-list {
@@ -1402,24 +1409,25 @@ ul, ol {
 }
 
 .gi-btn-primary {
-    background: var(--gi-primary);
-    border-color: var(--gi-primary);
+    background: var(--gi-gov-navy);
+    border-color: var(--gi-gov-navy);
     color: var(--gi-white);
 }
 
 .gi-btn-primary:hover {
-    background: var(--gi-primary-dark);
+    background: var(--gi-gov-navy-dark);
     text-decoration: none;
 }
 
 .gi-btn-accent {
-    background: var(--gi-accent);
-    border-color: var(--gi-accent);
-    color: var(--gi-white);
+    background: var(--gi-gov-gold);
+    border-color: var(--gi-gov-gold);
+    color: var(--gi-gov-navy-dark);
+    font-weight: bold;
 }
 
 .gi-btn-accent:hover {
-    background: #aa0000;
+    background: var(--gi-gov-gold-light);
     text-decoration: none;
 }
 
@@ -1438,14 +1446,14 @@ ul, ol {
     width: 100%;
 }
 
-/* === AIアシスタント === */
+/* === AIアシスタント（官公庁スタイル） === */
 .gi-ai-section {
-    border: 1px solid var(--gi-primary);
+    border: 2px solid var(--gi-gov-navy);
 }
 
 .gi-ai-section .gi-sidebar-header {
-    background: var(--gi-primary);
-    border-bottom: none;
+    background: linear-gradient(135deg, var(--gi-gov-navy) 0%, var(--gi-gov-navy-light) 100%);
+    border-bottom: 3px solid var(--gi-gov-gold);
 }
 
 .gi-ai-section .gi-sidebar-title {
@@ -1453,7 +1461,7 @@ ul, ol {
 }
 
 .gi-ai-section .gi-sidebar-title svg {
-    color: var(--gi-white);
+    color: var(--gi-gov-gold);
 }
 
 .gi-ai-body {
@@ -1579,16 +1587,17 @@ ul, ol {
 .gi-ai-chip {
     padding: 6px 10px;
     background: var(--gi-white);
-    border: 1px solid var(--gi-gray-500);
-    color: var(--gi-gray-900);
+    border: 1px solid var(--gi-gov-navy);
+    color: var(--gi-gov-navy);
     font-size: 11px;
     font-weight: 600;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 
 .gi-ai-chip:hover {
-    background: var(--gi-primary);
-    border-color: var(--gi-primary);
+    background: var(--gi-gov-navy);
+    border-color: var(--gi-gov-navy);
     color: var(--gi-white);
 }
 
@@ -2066,14 +2075,16 @@ ul, ol {
 .gi-mobile-ai-chip {
     padding: 8px 14px;
     background: var(--gi-white);
-    border: 1px solid var(--gi-gray-500);
+    border: 1px solid var(--gi-gov-navy);
+    color: var(--gi-gov-navy);
     font-size: 13px;
     font-weight: 600;
+    transition: all 0.2s ease;
 }
 
 .gi-mobile-ai-chip:hover {
-    background: var(--gi-primary);
-    border-color: var(--gi-primary);
+    background: var(--gi-gov-navy);
+    border-color: var(--gi-gov-navy);
     color: var(--gi-white);
 }
 
