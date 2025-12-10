@@ -476,7 +476,7 @@ wp_head();
                 <?php endif; ?>
                 <span class="gic-badge gic-badge-<?php echo esc_attr($difficulty['class']); ?>"><?php echo esc_html($difficulty['label']); ?></span>
                 <?php if ($column['is_featured']): ?><span class="gic-badge gic-badge-featured">注目</span><?php endif; ?>
-                <?php if ($column['is_new']): ?><span class="gic-badge gic-badge-new">NEW</span><?php endif; ?>
+                <?php if ($column['is_new']): ?><span class="gic-badge gic-badge-recent">新着</span><?php endif; ?>
                 <?php if ($freshness_class): ?><span class="gic-badge gic-badge-<?php echo $freshness_class; ?>"><?php echo $freshness_label; ?></span><?php endif; ?>
             </div>
             <h1 class="gic-hero-title"><?php echo esc_html($post_title); ?></h1>

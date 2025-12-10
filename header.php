@@ -67,11 +67,13 @@ $header_data = ji_get_header_data();
     <link rel="dns-prefetch" href="https://www.googletagmanager.com">
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
     
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts (非同期読み込み) -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet"></noscript>
     
-    <!-- Font Awesome 6.5 (with X/Twitter icon support) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <!-- Font Awesome 6.5 (非同期読み込み - X/Twitter icon support) -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'" crossorigin="anonymous">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous"></noscript>
     
     <?php wp_head(); ?>
     
@@ -144,6 +146,33 @@ $header_data = ji_get_header_data();
             background: #0D2A52 !important;
             border-color: #0D2A52 !important;
         }
+        
+        /* モバイルメニュー強制スタイル */
+        .ji-mobile-menu,
+        #ji-mobile-menu.ji-mobile-menu {
+            background: #0D2A52 !important;
+            background-color: #0D2A52 !important;
+        }
+        
+        .ji-mobile-menu-header {
+            background: #0D2A52 !important;
+            border-bottom-color: rgba(255, 255, 255, 0.15) !important;
+        }
+        
+        .ji-mobile-cta,
+        .ji-mobile-menu .ji-mobile-cta {
+            background: #C5A059 !important;
+            color: #081D3D !important;
+        }
+        
+        .ji-mobile-trust-badge {
+            background: rgba(255, 255, 255, 0.1) !important;
+            color: #FFFFFF !important;
+        }
+        
+        .ji-mobile-trust-badge i {
+            color: #C5A059 !important;
+        }
     </style>
 </head>
 
@@ -213,9 +242,9 @@ $header_data = ji_get_header_data();
                             <div class="ji-mega-column">
                                 <div class="ji-mega-column-title">検索方法</div>
                                 <a href="<?php echo esc_url($grants_url); ?>" class="ji-mega-link" role="menuitem">すべての補助金・助成金</a>
-                                <a href="<?php echo esc_url(add_query_arg('application_status', 'open', $grants_url)); ?>" class="ji-mega-link" role="menuitem">募集中の補助金・助成金<span class="ji-badge">HOT</span></a>
+                                <a href="<?php echo esc_url(add_query_arg('application_status', 'open', $grants_url)); ?>" class="ji-mega-link" role="menuitem">募集中の補助金・助成金</a>
                                 <a href="<?php echo esc_url(add_query_arg('orderby', 'deadline', $grants_url)); ?>" class="ji-mega-link" role="menuitem">締切間近</a>
-                                <a href="<?php echo esc_url(add_query_arg('orderby', 'new', $grants_url)); ?>" class="ji-mega-link" role="menuitem">新着補助金・助成金<span class="ji-badge new">NEW</span></a>
+                                <a href="<?php echo esc_url(add_query_arg('orderby', 'new', $grants_url)); ?>" class="ji-mega-link" role="menuitem">新着補助金・助成金</a>
                                 <a href="<?php echo esc_url(add_query_arg('orderby', 'popular', $grants_url)); ?>" class="ji-mega-link" role="menuitem">人気の補助金・助成金</a>
                             </div>
                             
@@ -434,34 +463,21 @@ $header_data = ji_get_header_data();
             <i class="fas fa-search" aria-hidden="true"></i>
             <span>補助金・助成金を探す</span>
         </a>
-        
-        <div class="ji-mobile-stats">
-            <div class="ji-mobile-stat">
-                <span class="ji-mobile-stat-value"><?php echo number_format($header_data['total_grants']); ?></span>
-                <span class="ji-mobile-stat-label">掲載数</span>
-            </div>
-            <div class="ji-mobile-stat">
-                <span class="ji-mobile-stat-value"><?php echo number_format($header_data['active_grants']); ?></span>
-                <span class="ji-mobile-stat-label">募集中</span>
-            </div>
-            <div class="ji-mobile-stat">
-                <span class="ji-mobile-stat-value">47</span>
-                <span class="ji-mobile-stat-label">都道府県</span>
-            </div>
-        </div>
     </div>
     
     <div class="ji-mobile-footer">
         <div class="ji-mobile-social">
-            <a href="https://twitter.com/joseikininsight" class="ji-mobile-social-link" aria-label="Twitter" target="_blank" rel="noopener"><i class="fab fa-twitter"></i></a>
+            <a href="https://twitter.com/joseikininsight" class="ji-mobile-social-link" aria-label="X (Twitter)" target="_blank" rel="noopener">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
             <a href="https://facebook.com/joseikin.insight" class="ji-mobile-social-link" aria-label="Facebook" target="_blank" rel="noopener"><i class="fab fa-facebook-f"></i></a>
             <a href="https://www.youtube.com/channel/UCbfjOrG3nSPI3GFzKnGcspQ" class="ji-mobile-social-link" aria-label="YouTube" target="_blank" rel="noopener"><i class="fab fa-youtube"></i></a>
-            <a href="https://note.com/joseikin_insight" class="ji-mobile-social-link" aria-label="Note" target="_blank" rel="noopener"><i class="fas fa-sticky-note"></i></a>
+            <a href="https://note.com/joseikin_insight" class="ji-mobile-social-link" aria-label="Note" target="_blank" rel="noopener"><i class="fas fa-pen-nib"></i></a>
         </div>
         
         <div class="ji-mobile-trust">
-            <span class="ji-mobile-trust-badge"><i class="fas fa-shield-alt"></i>専門家監修</span>
-            <span class="ji-mobile-trust-badge"><i class="fas fa-sync-alt"></i>毎日更新</span>
+            <span class="ji-mobile-trust-badge"><i class="fas fa-landmark"></i>公的情報源</span>
+            <span class="ji-mobile-trust-badge"><i class="fas fa-user-check"></i>専門家監修</span>
         </div>
         
         <div class="ji-mobile-copyright">&copy; <?php echo date('Y'); ?> <?php echo esc_html(get_bloginfo('name')); ?></div>
@@ -790,21 +806,7 @@ $header_data = ji_get_header_data();
         });
     })();
     
-    // MutationObserver to force colors on dynamic changes
-    const observer = new MutationObserver(() => {
-        const megaMenus = document.querySelectorAll('.ji-mega-menu');
-        megaMenus.forEach(menu => {
-            if (menu.style.background !== '#FFFFFF') {
-                menu.style.setProperty('background', '#FFFFFF', 'important');
-                menu.style.setProperty('background-color', '#FFFFFF', 'important');
-            }
-        });
-    });
-    
-    observer.observe(document.body, { 
-        attributes: true, 
-        subtree: true, 
-        attributeFilter: ['style', 'class'] 
-    });
+    // CSSでの強制適用を信頼し、MutationObserverは削除
+    // （パフォーマンス問題を引き起こすため）
 })();
 </script>

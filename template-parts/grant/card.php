@@ -62,7 +62,7 @@ if (empty($excerpt)) {
                 <?php endif; ?>
                 
                 <?php if ($is_new) : ?>
-                <span class="badge badge-new">NEW</span>
+                <span class="badge badge-recent">新着</span>
                 <?php endif; ?>
             </div>
             
@@ -210,8 +210,9 @@ if (empty($excerpt)) {
     50% { opacity: 0.8; }
 }
 
-.grant-card-text-compact .badge-new {
-    background: #00cc00;
+.grant-card-text-compact .badge-recent {
+    background: #0D2A52;
+    color: #FFFFFF;
 }
 
 /* 投稿日 */

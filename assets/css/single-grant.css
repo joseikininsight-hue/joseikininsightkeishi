@@ -245,10 +245,10 @@ ul, ol {
     color: var(--gi-white);
 }
 
-.gi-badge-new {
-    background: var(--gi-primary);
-    border-color: var(--gi-primary);
-    color: var(--gi-white);
+.gi-badge-recent {
+    background: #0D2A52;
+    border-color: #0D2A52;
+    color: #FFFFFF;
 }
 
 .gi-hero-title {
