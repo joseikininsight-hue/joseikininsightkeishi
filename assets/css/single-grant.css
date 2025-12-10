@@ -105,6 +105,8 @@ ul, ol {
 
 .gi-page {
     background: var(--gi-bg);
+    /* ヘッダー（64px）+ 金ライン（4px）の高さ分のパディング */
+    padding-top: 68px;
 }
 
 .gi-layout {
