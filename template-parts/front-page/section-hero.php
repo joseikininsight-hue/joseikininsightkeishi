@@ -158,21 +158,6 @@ if ($total_grants > 0) {
                     </p>
                 </div>
                 
-                <!-- 統計バー（E-E-A-T強化） -->
-                <div class="hero__stats" role="list" aria-label="サービス実績">
-                    <?php foreach ($hero_config['stats'] as $stat): ?>
-                    <div class="hero__stat" role="listitem">
-                        <span class="hero__stat-number">
-                            <?php echo esc_html($stat['number']); ?>
-                            <?php if ($stat['suffix']): ?>
-                            <span class="hero__stat-suffix"><?php echo esc_html($stat['suffix']); ?></span>
-                            <?php endif; ?>
-                        </span>
-                        <span class="hero__stat-label"><?php echo esc_html($stat['label']); ?></span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                
             </div>
             
             <!-- 右カラム: ビジュアル -->

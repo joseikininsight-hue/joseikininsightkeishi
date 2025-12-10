@@ -43,12 +43,20 @@
 }
 
 /* --------------------------------------------------------------------------
-   Stats Bar
+   Stats Bar - Government Official Style
+   官公庁風デザイン - 濃紺×金カラースキーム
    -------------------------------------------------------------------------- */
 .search__stats-bar {
     background: var(--s-black);
     color: var(--s-white);
     padding: 12px 0;
+}
+
+/* 官公庁風スタイル */
+.search__stats-bar--gov {
+    background: linear-gradient(135deg, #0D2A52 0%, #1A3D6E 100%);
+    border-bottom: 3px solid #C5A059;
+    padding: 16px 0;
 }
 
 .search__stats-inner {
@@ -59,10 +67,25 @@
     font-size: 13px;
 }
 
+.search__stats-bar--gov .search__stats-inner {
+    gap: 32px;
+}
+
 .search__stat-item {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.search__stats-bar--gov .search__stat-item {
+    gap: 10px;
+}
+
+.search__stat-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #C5A059;
 }
 
 .search__stat-label {
@@ -72,11 +95,22 @@
     color: var(--s-gray-400);
 }
 
+.search__stats-bar--gov .search__stat-label {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: rgba(255, 255, 255, 0.6);
+}
+
 .search__stat-value {
     font-family: var(--s-font-mono);
     font-weight: 900;
     font-size: 16px;
     color: #FFD700;
+}
+
+.search__stats-bar--gov .search__stat-value {
+    font-size: 18px;
+    color: #FFFFFF;
 }
 
 .search__stat-unit,
@@ -85,10 +119,52 @@
     color: var(--s-gray-300);
 }
 
+.search__stats-bar--gov .search__stat-unit {
+    font-size: 13px;
+    color: #C5A059;
+    font-weight: 600;
+}
+
+.search__stats-bar--gov .search__stat-date {
+    font-family: var(--s-font-mono);
+    font-size: 14px;
+    color: #FFFFFF;
+    font-weight: 700;
+}
+
 .search__stat-divider {
     width: 1px;
     height: 16px;
     background: var(--s-gray-700);
+}
+
+.search__stats-bar--gov .search__stat-divider {
+    height: 24px;
+    background: rgba(197, 160, 89, 0.4);
+}
+
+@media (max-width: 640px) {
+    .search__stats-bar--gov {
+        padding: 12px 0;
+    }
+    
+    .search__stats-bar--gov .search__stats-inner {
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    
+    .search__stats-bar--gov .search__stat-value {
+        font-size: 16px;
+    }
+    
+    .search__stats-bar--gov .search__stat-unit,
+    .search__stats-bar--gov .search__stat-date {
+        font-size: 12px;
+    }
+    
+    .search__stat-icon {
+        display: none;
+    }
 }
 
 /* --------------------------------------------------------------------------
